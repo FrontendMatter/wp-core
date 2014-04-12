@@ -2,6 +2,7 @@
 
 use Mosaicpro\Alert\Alert;
 use Mosaicpro\Button\Button;
+use Mosaicpro\ButtonGroup\ButtonGroup;
 use Mosaicpro\Table\Table;
 
 /**
@@ -39,6 +40,18 @@ class CRUD
      * @var
      */
     protected $list_fields;
+
+    /**
+     * Holds what actions will be displayed in the Related List table
+     * @var array
+     */
+    protected $list_actions = ['edit_related', 'add_to_post'];
+
+    /**
+     * Holds custom query arguments for fetching the Related List
+     * @var array
+     */
+    protected $list_query = [];
 
     /**
      * Holds the CRUD instance ID
@@ -79,6 +92,28 @@ class CRUD
     public function setListFields($fields)
     {
         $this->list_fields = $fields;
+        return $this;
+    }
+
+    /**
+     * Set the actions to be displayed in the Related List table
+     * @param $actions
+     * @return $this
+     */
+    public function setListActions($actions)
+    {
+        $this->list_actions = $actions;
+        return $this;
+    }
+
+    /**
+     * Set custom query arguments for fetching the Related List
+     * @param $query
+     * @return $this
+     */
+    public function setListQuery($query)
+    {
+        $this->list_query = $query;
         return $this;
     }
 
@@ -138,11 +173,13 @@ class CRUD
             $related_type = $this->prefix . '_' . $this->related;
             if (is_null($this->related_prefix)) $related_type = $this->related;
 
-            $related_posts = get_posts([
+            $related_posts_query = [
                 'post_type' => $related_type,
                 'numberposts' => -1,
                 'post_status' => get_post_stati()
-            ]);
+            ];
+            $related_posts_query = array_merge($related_posts_query, $this->list_query);
+            $related_posts = get_posts($related_posts_query);
 
             if (count($related_posts) > 0)
             {
@@ -159,21 +196,43 @@ class CRUD
                                 ->link(get_permalink($related_post->ID), $related_post->post_title) .
                                 '<p>' . wp_trim_words(strip_tags($related_post->post_content)) . '</p>';
                         }
+                        elseif ($field == 'post_thumbnail')
+                            $related_table_row['Image'] = \Mosaicpro\WpCore\PostList::post_thumbnail($related_post->ID, 50, 50);
+                        elseif (is_callable($field))
+                        {
+                            $callable = $field($related_post);
+                            $related_table_row[$callable['field']] = $callable['value'];
+                        }
                         elseif (isset($related_post->{$field}))
                             $related_table_row[$field] = $related_post->{$field};
                         else
                             $related_table_row[$field] = $value;
                     }
 
-                   $related_table_row['actions'] = Button::regular('<i class="glyphicon glyphicon-plus"></i> Add to ' . $this->post)
-                        ->isSm()
-                        ->addAttributes([
-                            'data-toggle' => 'add-to-post',
-                            'data-related-id' => $related_post->ID,
-                            'data-related-title' => $related_post->post_title,
-                            'data-related-instance' => $this->instance
-                        ]);
+                    $actions = '';
+                    foreach($this->list_actions as $action)
+                    {
+                        if ($action == 'edit_related')
+                        {
+                            $actions .= Button::regular('<i class="glyphicon glyphicon-pencil"></i>')
+                                ->isXs()
+                                ->addUrl(get_admin_url() . 'admin-ajax.php?action=' . $this->prefix . '_edit_' . $this->related . '&related_id=' . $related_post->ID);
+                        }
+                        if ($action == 'add_to_post')
+                        {
+                            $actions .= Button::success('<i class="glyphicon glyphicon-plus"></i>')
+                                ->isXs()
+                                ->addAttributes([
+                                    'data-toggle' => 'add-to-post',
+                                    'data-related-id' => $related_post->ID,
+                                    'data-related-title' => $related_post->post_title,
+                                    'data-related-instance' => $this->instance
+                                ]);
+                        }
+                    }
+                    $actions = ButtonGroup::make()->add($actions);
 
+                    $related_table_row['actions'] = $actions;
                     $related_table[] = $related_table_row;
                 }
 
@@ -242,7 +301,7 @@ class CRUD
             ThickBox::getHeader();
             ?>
             <div class="col-md-12">
-                <h3>Edit Unit</h3>
+                <h3>Edit <?php echo ucwords($this->related); ?></h3>
             </div>
             <hr/>
             <form action="" class="edit-related-form" data-related-instance="<?php echo $this->instance; ?>" method="post">

@@ -2,15 +2,55 @@
 
 use Mosaicpro\Core\IoC;
 
+/**
+ * Class MetaBox
+ * @package Mosaicpro\WpCore
+ */
 class MetaBox
 {
+    /**
+     * @var string
+     */
     protected $prefix = '';
+
+    /**
+     * @var string
+     */
     protected $name = '';
+
+    /**
+     * @var string
+     */
     protected $label = '';
+
+    /**
+     * @var string
+     */
     protected $post_type = '';
+
+    /**
+     * @var array
+     */
     protected $display = [];
+
+    /**
+     * @var array
+     */
     protected $fields = [];
 
+    /**
+     * @var string
+     */
+    protected $context = 'advanced';
+
+    /**
+     * @var string
+     */
+    protected $priority = 'default';
+
+    /**
+     *
+     */
     public function __construct()
     {
         $this->prefix = '';
@@ -21,11 +61,17 @@ class MetaBox
         $this->fields = [];
     }
 
+    /**
+     * @return mixed
+     */
     public function register()
     {
         return $this->add()->save();
     }
 
+    /**
+     * @return $this
+     */
     private function add()
     {
         add_action('add_meta_boxes', function()
@@ -36,12 +82,17 @@ class MetaBox
                 function($post) {
                     $this->display($post);
                 },
-                $this->prefix . '_' . $this->post_type
+                $this->prefix . '_' . $this->post_type,
+                $this->context,
+                $this->priority
             );
         });
         return $this;
     }
 
+    /**
+     * @return $this
+     */
     private function save()
     {
         if (empty($this->fields))
@@ -71,6 +122,9 @@ class MetaBox
         return $this;
     }
 
+    /**
+     * @param $post
+     */
     private function display($post)
     {
         $components = ['fields'];
@@ -96,6 +150,11 @@ class MetaBox
         }
     }
 
+    /**
+     * @param $display
+     * @param array $args
+     * @return mixed
+     */
     private function display_component($display, array $args = [])
     {
         switch ($display)
@@ -107,6 +166,9 @@ class MetaBox
         }
     }
 
+    /**
+     * @param $post
+     */
     private function fields($post)
     {
         $form = IoC::getContainer('form');
@@ -160,6 +222,10 @@ class MetaBox
         }
     }
 
+    /**
+     * @param $post_type
+     * @return array
+     */
     private function get_select_values($post_type)
     {
         $posts = get_posts([
@@ -174,12 +240,23 @@ class MetaBox
         return $posts_values;
     }
 
+    /**
+     * @param $name
+     * @param $args
+     * @return mixed
+     */
     public static function __callStatic($name, $args)
     {
         $instance = new static();
         return call_user_func_array([$instance, 'init'], $args);
     }
 
+    /**
+     * @param $prefix
+     * @param $name
+     * @param $label
+     * @return $this
+     */
     public function init($prefix, $name, $label)
     {
         $this->prefix = $prefix;
@@ -189,18 +266,50 @@ class MetaBox
         return $this;
     }
 
+    /**
+     * @param $post_type
+     * @return $this
+     */
     public function setPostType($post_type)
     {
         $this->post_type = $post_type;
         return $this;
     }
 
+    /**
+     * @param $context
+     * @return $this
+     */
+    public function setContext($context)
+    {
+        $this->context = $context;
+        return $this;
+    }
+
+    /**
+     * @param $priority
+     * @return $this
+     */
+    public function setPriority($priority)
+    {
+        $this->priority = $priority;
+        return $this;
+    }
+
+    /**
+     * @param $fields
+     * @return $this
+     */
     public function setFields($fields)
     {
         $this->fields = $fields;
         return $this;
     }
 
+    /**
+     * @param $display
+     * @return $this
+     */
     public function setDisplay($display)
     {
         $this->display = $display;
