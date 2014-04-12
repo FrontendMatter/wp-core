@@ -4,29 +4,88 @@ use Mosaicpro\Alert\Alert;
 use Mosaicpro\Button\Button;
 use Mosaicpro\Table\Table;
 
+/**
+ * Class CRUD
+ * @package Mosaicpro\WpCore
+ */
 class CRUD
 {
+    /**
+     * Holds the post prefix
+     * @var
+     */
     protected $prefix;
+
+    /**
+     * Holds the main post type
+     * @var
+     */
     protected $post;
+
+    /**
+     * Holds the Related post type
+     * @var
+     */
     protected $related;
+
+    /**
+     * Holds the Related prefix
+     * @var
+     */
+    protected $related_prefix;
+
+    /**
+     * Holds the fields used for composing the Related List table columns
+     * @var
+     */
     protected $list_fields;
+
+    /**
+     * Holds the CRUD instance ID
+     * @var string
+     */
     protected $instance;
 
+    /**
+     * Create a new CRUD instance
+     * @param $prefix
+     * @param $post
+     * @param $related
+     */
     public function __construct($prefix, $post, $related)
     {
         $this->prefix = $prefix;
         $this->post = $post;
-        $this->related = $related;
+
+        if (is_array($related))
+        {
+            $this->related_prefix = $related[0];
+            $this->related = $related[1];
+        }
+        else {
+            $this->related_prefix = $prefix;
+            $this->related = $related;
+        }
+
         $this->instance = 'crud_related_instance_' . $this->related;
         return $this;
     }
 
+    /**
+     * Set the fields used for composing the Related List table columns
+     * @param $fields
+     * @return $this
+     */
     public function setListFields($fields)
     {
         $this->list_fields = $fields;
         return $this;
     }
 
+    /**
+     * Initialize CRUD
+     * @return $this
+     */
     public function register()
     {
         $this->register_scripts();
@@ -38,6 +97,9 @@ class CRUD
         return $this;
     }
 
+    /**
+     * Registers the required scripts in wp admin add/edit pages
+     */
     private function register_scripts()
     {
         add_action('admin_enqueue_scripts', function($hook)
@@ -63,6 +125,9 @@ class CRUD
         });
     }
 
+    /**
+     * Handle Related List AJAX requests
+     */
     private function handle_ajax_list_related()
     {
         add_action('wp_ajax_' . $this->prefix . '_list_' . $this->related, function()
@@ -71,7 +136,7 @@ class CRUD
             ThickBox::getHeader();
 
             $related_type = $this->prefix . '_' . $this->related;
-            if ($this->related == 'post') $related_type = $this->related;
+            if (is_null($this->related_prefix)) $related_type = $this->related;
 
             $related_posts = get_posts([
                 'post_type' => $related_type,
@@ -124,6 +189,9 @@ class CRUD
         });
     }
 
+    /**
+     * Handle Edit Related AJAX requests
+     */
     private function handle_ajax_edit_related()
     {
         add_action('wp_ajax_' . $this->prefix . '_edit_' . $this->related, function()
@@ -193,6 +261,9 @@ class CRUD
         });
     }
 
+    /**
+     * Handle List Post Related AJAX requests
+     */
     private function handle_ajax_list_post_related()
     {
         add_action('wp_ajax_' . $this->prefix . '_list_' . $this->post . '_' . $this->related, function()
@@ -211,6 +282,9 @@ class CRUD
         });
     }
 
+    /**
+     * Handle Add Post Related AJAX requests
+     */
     private function handle_ajax_add_post_related()
     {
         add_action('wp_ajax_' . $this->prefix . '_add_' . $this->post . '_' . $this->related, function()
@@ -233,6 +307,9 @@ class CRUD
         });
     }
 
+    /**
+     * Handle Remove Post Related AJAX requests
+     */
     private function handle_ajax_remove_post_related()
     {
         add_action('wp_ajax_' . $this->prefix . '_remove_' . $this->post . '_' . $this->related, function()
@@ -255,6 +332,13 @@ class CRUD
         });
     }
 
+    /**
+     * Create a new static CRUD instance
+     * @param $prefix
+     * @param $post
+     * @param $related
+     * @return static
+     */
     public static function make($prefix, $post, $related)
     {
         return new static($prefix, $post, $related);
