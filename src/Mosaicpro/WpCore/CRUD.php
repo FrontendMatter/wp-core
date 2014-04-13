@@ -58,7 +58,7 @@ class CRUD
      * Holds the post related list actions / buttons
      * @var array
      */
-    protected $post_related_list_actions = ['edit_related', 'remove_from_post'];
+    protected $post_related_list_actions = ['edit_related_thickbox', 'remove_from_post'];
 
     /**
      * Holds custom query arguments for fetching the Related List
@@ -463,10 +463,16 @@ class CRUD
         $actions = [];
         foreach($this->{$list_key} as $action)
         {
-            if ($action == 'edit_related')
+            if ($action == 'edit_related_thickbox')
             {
                 $actions[] = Button::regular('<i class="glyphicon glyphicon-pencil"></i>')
                     ->addAttributes(['title' => 'Edit ' . $this->related, 'class' => 'thickbox'])
+                    ->addUrl(admin_url() . 'admin-ajax.php?action=' . $this->prefix . '_edit_' . $this->related . '&related_id=' . $related_post->ID . '#TB_iframe?width=600&width=550');
+            }
+            if ($action == 'edit_related')
+            {
+                $actions[] = Button::regular('<i class="glyphicon glyphicon-pencil"></i>')
+                    ->addAttributes(['title' => 'Edit ' . $this->related])
                     ->addUrl(admin_url() . 'admin-ajax.php?action=' . $this->prefix . '_edit_' . $this->related . '&related_id=' . $related_post->ID . '#TB_iframe?width=600&width=550');
             }
             if ($action == 'add_to_post')
