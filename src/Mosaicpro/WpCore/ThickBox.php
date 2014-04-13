@@ -1,17 +1,60 @@
 <?php namespace Mosaicpro\WpCore;
 
+/**
+ * Class ThickBox
+ * @package Mosaicpro\WpCore
+ */
 class ThickBox
 {
+    /**
+     * Holds the ThickBox unique identifier on the current page
+     * @var string
+     */
     protected $id = 'the-thickbox-id';
+
+    /**
+     * Holds the label of the button that opens the ThickBox
+     * @var string
+     */
     protected $label = 'Open ThickBox';
+
+    /**
+     * Holds the inline ThickBox content
+     * @var string
+     */
     protected $content = 'The ThickBox Content';
+
+    /**
+     * Holds the URL to open when using the iframe ThickBox
+     * @var string
+     */
     protected $url = 'admin-ajax.php';
+
+    /**
+     * Holds the data passed to the URL when using the iframe ThickBox
+     * @var string
+     */
     protected $url_data = '';
+
+    /**
+     * Holds the ThickBox type
+     * @var string
+     */
     protected $type;
 
+    /**
+     * Holds the inline ThickBox type name
+     */
     const TB_TYPE_INLINE = 'TB_inline';
+
+    /**
+     * Holds the iframe ThickBox type name
+     */
     const TB_TYPE_IFRAME = 'TB_iframe';
 
+    /**
+     * Create a new ThickBox instance
+     */
     public function __construct()
     {
         $args = func_get_args();
@@ -32,6 +75,10 @@ class ThickBox
         if (isset($url_data)) $this->url_data = $url_data;
     }
 
+    /**
+     * Create a new static ThickBox instance
+     * @return static
+     */
     public static function register()
     {
         $args = func_get_args();
@@ -39,6 +86,10 @@ class ThickBox
         return new static($args);
     }
 
+    /**
+     * Create the ThickBox output
+     * @return string
+     */
     private function thickbox()
     {
         add_thickbox();
@@ -49,7 +100,7 @@ class ThickBox
         }
         else $this->url_data = '&inlineId=' . $this->id;
 
-        $output = '<a href="' . $this->url . '#' . $this->type . '?width=600&height=550' . $this->url_data . '" class="button thickbox">' . $this->label . '</a>';
+        $output = '<a href="' . $this->url . '#' . $this->type . '?width=600&height=550' . $this->url_data . '" class="button thickbox">' . $this->label . '</a>' . PHP_EOL;
 
         if ($this->type === self::TB_TYPE_INLINE)
             $output .= '
@@ -60,6 +111,13 @@ class ThickBox
         return $output;
     }
 
+    /**
+     * Create a config array for an inline ThickBox
+     * @param $id
+     * @param bool $label
+     * @param bool $content
+     * @return array
+     */
     public static function get_inline($id, $label = false, $content = false)
     {
         $return = [
@@ -70,6 +128,14 @@ class ThickBox
         return $return;
     }
 
+    /**
+     * Create a config array for an iframe ThickBox
+     * @param $id
+     * @param bool $label
+     * @param bool $url
+     * @param array $data
+     * @return array
+     */
     public static function get_iframe($id, $label = false, $url = false, array $data = [])
     {
         $return = [
@@ -82,6 +148,10 @@ class ThickBox
         return $return;
     }
 
+    /**
+     * Create a ThickBox that opens an URL in an iframe
+     * @return mixed
+     */
     public static function register_iframe()
     {
         $args = func_get_args();
@@ -89,6 +159,10 @@ class ThickBox
         return forward_static_call_array(['self', 'register'], [$config]);
     }
 
+    /**
+     * Create an inline ThickBox
+     * @return mixed
+     */
     public static function register_inline()
     {
         $args = func_get_args();
@@ -96,11 +170,18 @@ class ThickBox
         return forward_static_call_array(['self', 'register'], [$config]);
     }
 
+    /**
+     * Render the ThickBox output
+     * @return string
+     */
     public function render()
     {
         return $this->thickbox();
     }
 
+    /**
+     * Generate a header for the ThickBox iframe
+     */
     public static function getHeader()
     {
         ?>
@@ -119,6 +200,9 @@ class ThickBox
     <?php
     }
 
+    /**
+     * Generate a footer for the ThickBox iframe
+     */
     public static function getFooter()
     {
         wp_footer();

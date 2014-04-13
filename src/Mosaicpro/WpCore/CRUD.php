@@ -39,7 +39,7 @@ class CRUD
      * Holds the fields used for composing the Related List table columns
      * @var
      */
-    protected $list_fields;
+    protected $list_fields = ['ID', 'post_title'];
 
     /**
      * Holds what actions will be displayed in the Related List table
