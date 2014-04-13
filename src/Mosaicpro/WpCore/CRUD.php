@@ -3,6 +3,7 @@
 use Mosaicpro\Alert\Alert;
 use Mosaicpro\Button\Button;
 use Mosaicpro\ButtonGroup\ButtonGroup;
+use Mosaicpro\ListGroup\ListGroup;
 use Mosaicpro\Table\Table;
 
 /**
@@ -42,16 +43,40 @@ class CRUD
     protected $list_fields = ['ID', 'post_title'];
 
     /**
+     * Holds the fields used for composing the Post Related List table columns
+     * @var array
+     */
+    protected $post_related_list_fields = ['ID', 'post_title'];
+
+    /**
      * Holds what actions will be displayed in the Related List table
      * @var array
      */
     protected $list_actions = ['edit_related', 'add_to_post'];
 
     /**
+     * Holds the post related list actions / buttons
+     * @var array
+     */
+    protected $post_related_list_actions = ['edit_related', 'remove_from_post'];
+
+    /**
      * Holds custom query arguments for fetching the Related List
      * @var array
      */
     protected $list_query = [];
+
+    /**
+     * Holds the related list format
+     * @var string
+     */
+    protected $list_related_format = 'table';
+
+    /**
+     * Holds the post related list format
+     * @var string
+     */
+    protected $list_post_related_format = 'table';
 
     /**
      * Holds the CRUD instance ID
@@ -96,6 +121,30 @@ class CRUD
     }
 
     /**
+     * Returns the stored list_fields
+     * @return mixed
+     */
+    public function getListFields()
+    {
+        return $this->list_fields;
+    }
+
+    /**
+     * Set the post related list fields
+     * Can also accept a $fields closure that allows to copy the list_fields
+     * e.g. setPostRelatedListFields(function($instance){
+     *      return $instance->getListFields();
+     * });
+     * @param $fields
+     * @return $this
+     */
+    public function setPostRelatedListFields($fields)
+    {
+        $this->post_related_list_fields = is_callable($fields) ? $fields($this) : $fields;
+        return $this;
+    }
+
+    /**
      * Set the actions to be displayed in the Related List table
      * @param $actions
      * @return $this
@@ -115,6 +164,47 @@ class CRUD
     {
         $this->list_query = $query;
         return $this;
+    }
+
+    /**
+     * @param string $list_related_format
+     * @return $this
+     */
+    public function setListRelatedFormat($list_related_format)
+    {
+        $this->list_related_format = $list_related_format;
+        return $this;
+    }
+
+    /**
+     * @param string $list_post_related_format
+     * @return $this
+     */
+    public function setListPostRelatedFormat($list_post_related_format)
+    {
+        $this->list_post_related_format = $list_post_related_format;
+        return $this;
+    }
+
+    /**
+     * @param array $post_related_list_actions
+     * @return $this
+     */
+    public function setPostRelatedListActions($post_related_list_actions)
+    {
+        $this->post_related_list_actions = $post_related_list_actions;
+        return $this;
+    }
+
+    /**
+     * Return the Related post type with or without the Related prefix
+     * @return string
+     */
+    private function getRelatedType()
+    {
+        $related_type = $this->prefix . '_' . $this->related;
+        if (is_null($this->related_prefix)) $related_type = $this->related;
+        return $related_type;
     }
 
     /**
@@ -170,76 +260,15 @@ class CRUD
             wp_enqueue_script('ajax_list_' . $this->related, plugin_dir_url(__FILE__) . 'js/crud/ajax_list.js', ['jquery'], '1.0', true);
             ThickBox::getHeader();
 
-            $related_type = $this->prefix . '_' . $this->related;
-            if (is_null($this->related_prefix)) $related_type = $this->related;
-
             $related_posts_query = [
-                'post_type' => $related_type,
-                'numberposts' => -1,
-                'post_status' => get_post_stati()
+                'post_type' => $this->getRelatedType(),
+                'numberposts' => -1
             ];
             $related_posts_query = array_merge($related_posts_query, $this->list_query);
             $related_posts = get_posts($related_posts_query);
 
             if (count($related_posts) > 0)
-            {
-                $related_table = [];
-                foreach ($related_posts as $related_post)
-                {
-                    $related_table_row = [];
-                    foreach ($this->list_fields as $field => $value)
-                    {
-                        if (is_numeric($field)) $field = $value;
-                        if ($field == 'post_title_permalink')
-                        {
-                            $related_table_row['title'] = \Mosaicpro\Core\IoC::getContainer('html')
-                                ->link(get_permalink($related_post->ID), $related_post->post_title) .
-                                '<p>' . wp_trim_words(strip_tags($related_post->post_content)) . '</p>';
-                        }
-                        elseif ($field == 'post_thumbnail')
-                            $related_table_row['Image'] = \Mosaicpro\WpCore\PostList::post_thumbnail($related_post->ID, 50, 50);
-                        elseif (is_callable($field))
-                        {
-                            $callable = $field($related_post);
-                            $related_table_row[$callable['field']] = $callable['value'];
-                        }
-                        elseif (isset($related_post->{$field}))
-                            $related_table_row[$field] = $related_post->{$field};
-                        else
-                            $related_table_row[$field] = $value;
-                    }
-
-                    $actions = '';
-                    foreach($this->list_actions as $action)
-                    {
-                        if ($action == 'edit_related')
-                        {
-                            $actions .= Button::regular('<i class="glyphicon glyphicon-pencil"></i>')
-                                ->isXs()
-                                ->addUrl(get_admin_url() . 'admin-ajax.php?action=' . $this->prefix . '_edit_' . $this->related . '&related_id=' . $related_post->ID);
-                        }
-                        if ($action == 'add_to_post')
-                        {
-                            $actions .= Button::success('<i class="glyphicon glyphicon-plus"></i>')
-                                ->isXs()
-                                ->addAttributes([
-                                    'data-toggle' => 'add-to-post',
-                                    'data-related-id' => $related_post->ID,
-                                    'data-related-title' => $related_post->post_title,
-                                    'data-related-instance' => $this->instance
-                                ]);
-                        }
-                    }
-                    $actions = ButtonGroup::make()->add($actions);
-
-                    $related_table_row['actions'] = $actions;
-                    $related_table[] = $related_table_row;
-                }
-
-                echo Table::make()
-                    ->isStriped()
-                    ->addBody($related_table, ['actions' => ['class' => 'text-right']]);
-            }
+                echo $this->get_list_format($this->list_related_format, $related_posts);
             else
                 echo Alert::make()->addAlert('No related posts found.')->isInfo();
 
@@ -269,21 +298,6 @@ class CRUD
                     'post_title' => $_POST['post_title']
                 ];
                 wp_update_post($related_save);
-
-                $posts = get_posts([
-                    'post_type' => $this->prefix . '_' . $this->post,
-                    'post_status' => get_post_stati(),
-                    'numberposts' => -1
-                ]);
-
-                $related_key = $this->prefix . '_' . $this->related;
-                foreach($posts as $post_with_related)
-                {
-                    $list = get_post_meta($post_with_related->ID, $related_key, true);
-                    $list = array_set($list, $related_id, ['id' => $related_id, 'title' => $related_save['post_title']]);
-                    update_post_meta($post_with_related->ID, $related_key, $list);
-                }
-
                 wp_send_json_success();
                 die();
             }
@@ -300,6 +314,7 @@ class CRUD
 
             ThickBox::getHeader();
             ?>
+
             <div class="col-md-12">
                 <h3>Edit <?php echo ucwords($this->related); ?></h3>
             </div>
@@ -337,8 +352,148 @@ class CRUD
             $list = get_post_meta($post_id, $related_key, true);
             if (!is_array($list) || empty($list)) $list = [];
 
-            wp_send_json_success( $list );
+            $list_ids = [];
+            foreach($list as $list_item)
+                $list_ids[] = $list_item['id'];
+
+            $related_posts = get_posts([
+                'post_type' => $this->getRelatedType(),
+                'numberposts' => -1,
+                'post__in' => $list_ids
+            ]);
+
+            $list_format = $this->get_list_format($this->list_post_related_format, $related_posts, 'post_related_');
+            wp_send_json_success( $list_format );
         });
+    }
+
+    /**
+     * Forwards a posts list to the right format method
+     * @param $format_key
+     * @param $related_posts
+     * @param string $prefix
+     * @return mixed
+     */
+    private function get_list_format($format_key, $related_posts, $prefix = '')
+    {
+        if (is_callable($format_key))
+            return $format_key($related_posts);
+
+        return $this->{"get_list_format_" . $format_key}($related_posts, $prefix);
+    }
+
+    /**
+     * Format a post list with the ListGroup component
+     * @param $related_posts
+     * @param string $prefix
+     * @return mixed
+     */
+    private function get_list_format_listgroup($related_posts, $prefix = '')
+    {
+        $list_wrapper = ListGroup::make();
+        foreach($related_posts as $related_post)
+        {
+            $actions = $this->get_list_actions($prefix . 'list_actions', $related_post);
+            $button_group = ButtonGroup::make()->addAttributes(['class' => 'btn-group-xs'])->pullRight();
+            foreach ($actions as $action)
+                $button_group->add($action);
+
+            $list_content = $related_post->post_title . $button_group;
+            $list_wrapper->addList($list_content);
+        }
+        return $list_wrapper->__toString();
+    }
+
+    /**
+     * Format a post list with the Table component
+     * @param $related_posts
+     * @param string $prefix
+     * @return mixed
+     */
+    private function get_list_format_table($related_posts, $prefix = '')
+    {
+        $related_table = [];
+        foreach ($related_posts as $related_post)
+        {
+            $related_table_row = [];
+            foreach ($this->{$prefix . 'list_fields'} as $field => $value)
+            {
+                if (is_numeric($field)) $field = $value;
+                if ($field == 'post_title_permalink')
+                {
+                    $related_table_row['title'] = \Mosaicpro\Core\IoC::getContainer('html')
+                            ->link(get_permalink($related_post->ID), $related_post->post_title) .
+                        '<p>' . wp_trim_words(strip_tags($related_post->post_content)) . '</p>';
+                }
+                elseif ($field == 'post_thumbnail')
+                    $related_table_row['Image'] = PostList::post_thumbnail($related_post->ID, 50, 50);
+                elseif (is_callable($field))
+                {
+                    $callable = $field($related_post);
+                    $related_table_row[$callable['field']] = $callable['value'];
+                }
+                elseif (isset($related_post->{$field}))
+                    $related_table_row[$field] = $related_post->{$field};
+                else
+                    $related_table_row[$field] = $value;
+            }
+
+            $actions = $this->get_list_actions($prefix . 'list_actions', $related_post);
+            $button_group = ButtonGroup::make()->addAttributes(['class' => 'btn-group-xs'])->pullRight();
+            foreach ($actions as $action)
+                $button_group->add($action);
+
+            $related_table_row['actions'] = $button_group;
+            $related_table[] = $related_table_row;
+        }
+
+        return Table::make()
+            ->isStriped()
+            ->addBody($related_table, ['actions' => ['class' => 'text-right']])->__toString();
+    }
+
+    /**
+     * Compose the list actions / buttons
+     * @param $list_key
+     * @param $related_post
+     * @return array
+     */
+    private function get_list_actions($list_key, $related_post)
+    {
+        $actions = [];
+        foreach($this->{$list_key} as $action)
+        {
+            if ($action == 'edit_related')
+            {
+                $actions[] = Button::regular('<i class="glyphicon glyphicon-pencil"></i>')
+                    ->addAttributes(['title' => 'Edit ' . $this->related, 'class' => 'thickbox'])
+                    ->addUrl(admin_url() . 'admin-ajax.php?action=' . $this->prefix . '_edit_' . $this->related . '&related_id=' . $related_post->ID . '#TB_iframe?width=600&width=550');
+            }
+            if ($action == 'add_to_post')
+            {
+                $actions[] = Button::success('<i class="glyphicon glyphicon-plus"></i>')
+                    ->isXs()
+                    ->addAttributes([
+                        'data-toggle' => 'add-to-post',
+                        'data-related-id' => $related_post->ID,
+                        'data-related-title' => $related_post->post_title,
+                        'data-related-instance' => $this->instance
+                    ]);
+            }
+            if ($action == 'remove_from_post')
+            {
+                $actions[] = Button::danger('<i class="glyphicon glyphicon-trash"></i>')
+                    ->addAttributes([
+                        'title' => 'Remove ' . $this->related . ' from ' . $this->post,
+                        'data-toggle' => 'remove-from-post',
+                        'data-related-id' => $related_post->ID,
+                        'data-related-instance' => 'crud_related_instance_' . $this->related
+                    ]);
+            }
+            if (is_callable($action))
+                $actions[] = $action($related_post);
+        }
+        return $actions;
     }
 
     /**

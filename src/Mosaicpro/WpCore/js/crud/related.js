@@ -27,7 +27,7 @@
                     return alert('An error occurred while saving the data');
 
                 if (typeof response.success !== 'undefined')
-                    that.format_related_list(response.data);
+                    that.listPostRelated();
             });
     }
 
@@ -54,29 +54,6 @@
             });
     }
 
-    window.mp_crud_related.prototype.format_related = function(related)
-    {
-        var related_data = this.instance;
-        var html = $('<li>').addClass('list-group-item').html(related.title);
-        var actions = $('<div>').addClass('actions pull-right btn-group btn-group-xs');
-        var remove = $('<a>').attr('href', '#')
-            .attr('title', 'Remove ' + related_data.related + ' from ' + related_data.post)
-            .attr('data-toggle', 'remove-from-post')
-            .attr('data-related-id', related.id)
-            .attr('data-related-instance', 'crud_related_instance_' + related_data.related)
-            .addClass('btn btn-danger')
-            .html('<i class="glyphicon glyphicon-trash"></i>');
-
-        var edit = $('<a>').attr('href', 'admin-ajax.php?action=' + related_data.prefix + '_edit_' + related_data.related + '&related_id=' + related.id + '#TB_iframe?width=600&width=550')
-            .attr('title', 'Edit ' + related_data.related)
-            .addClass('btn btn-default thickbox')
-            .html('<i class="glyphicon glyphicon-pencil"></i>');
-
-        actions.append(edit).append(remove);
-        html.prepend(actions);
-        return html;
-    }
-
     window.mp_crud_related.prototype.listPostRelated = function()
     {
         var that = this;
@@ -94,19 +71,9 @@
                     return alert('An error occurred while fetching the data');
 
                 if (typeof response.success !== 'undefined')
-                    that.format_related_list(response.data);
+                    $(that.list).html(response.data);
             });
     };
-
-    window.mp_crud_related.prototype.format_related_list = function(data)
-    {
-        var that = this;
-        $(that.list).empty();
-        $.each(data, function(k,v)
-        {
-            $(that.list).append(that.format_related(v));
-        });
-    }
 
     $(function()
     {
