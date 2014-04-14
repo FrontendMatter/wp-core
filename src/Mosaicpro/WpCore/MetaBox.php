@@ -9,47 +9,79 @@ use Mosaicpro\Core\IoC;
 class MetaBox
 {
     /**
+     * Holds the MetaBox prefix
      * @var string
      */
     protected $prefix = '';
 
     /**
+     * Holds the MetaBox unique identifier
      * @var string
      */
     protected $name = '';
 
     /**
+     * Holds the MetaBox Heading Label
      * @var string
      */
     protected $label = '';
 
     /**
+     * Holds the MetaBox post type
      * @var string
      */
     protected $post_type = '';
 
     /**
+     * Holds the MetaBox content
      * @var array
      */
     protected $display = [];
 
     /**
+     * Holds the MetaBox form fields
      * @var array
      */
     protected $fields = [];
 
     /**
+     * Holds the MetaBox context on page
      * @var string
      */
     protected $context = 'advanced';
 
     /**
+     * Holds the MetaBox priority on page
      * @var string
      */
     protected $priority = 'default';
 
     /**
-     *
+     * Add a form field to the MetaBox
+     * Example usage:
+     * ->setField('the_input', 'Your name', 'input')
+     * ->setField('select_me', 'Select the correct answer', 'mp_lms_quiz_answer', 'select')
+     * ->setField('check_it', 'Check this', 'checkbox')
+     * ->setField('radio_multiple', 'Select the correct answer', 'mp_lms_quiz_answer', 'radio')
+     * ->setField('radio_array', 'Select one value in the array', ['Option 1', 'Option 2', 'Option 3'], 'radio')
+     * ->setField('checkbox_multiple[]', 'Check multiple answers', 'mp_lms_quiz_answer', 'checkbox_multiple')
+     * ->setField('select_multiple[]', 'Select multiple answers', 'mp_lms_quiz_answer', 'select_multiple')
+     * @return $this
+     */
+    public function setField()
+    {
+        $args = func_get_args();
+        $name = isset($args[0]) ? $args[0] : false;
+        $label = isset($args[1]) && !is_callable($args[1]) ? $args[1] : $name;
+        $values = isset($args[2]) && !is_callable($args[2]) ? $args[2] : '';
+        $type = array_pop($args);
+        $field = ['type' => $type, 'name' => $name, 'label' => $label, 'values' => $values];
+        $this->fields[] = $field;
+        return $this;
+    }
+
+    /**
+     * Create a new MetaBox instance
      */
     public function __construct()
     {
@@ -62,6 +94,7 @@ class MetaBox
     }
 
     /**
+     * Perform WordPress add_meta_boxes and save_post actions
      * @return mixed
      */
     public function register()
@@ -70,6 +103,7 @@ class MetaBox
     }
 
     /**
+     * Perform WordPress add_meta_boxes action
      * @return $this
      */
     private function add()
@@ -91,6 +125,7 @@ class MetaBox
     }
 
     /**
+     * Perform WordPress save_post action
      * @return $this
      */
     private function save()
@@ -105,16 +140,14 @@ class MetaBox
                 $name = $field['name'];
                 if (ends_with($name, '[]')) $name = substr($name, 0, -2);
 
+                if ($field['type'] == 'checkbox')
+                    update_post_meta( $id, $name, '' );
+
                 if ( isset($_POST[$name]) )
                 {
                     $value = $_POST[$name];
                     if (!is_array($value)) $value = strip_tags($value);
-
-                    update_post_meta(
-                        $id,
-                        $name,
-                        $value
-                    );
+                    update_post_meta( $id, $name, $value );
                 }
             }
         }, 10, 2);
@@ -123,10 +156,14 @@ class MetaBox
     }
 
     /**
+     * Output the MetaBox content
      * @param $post
      */
     private function display($post)
     {
+        ?>
+        <div class="bootstrap">
+        <?php
         $components = ['fields'];
 
         if (empty($this->display))
@@ -148,9 +185,13 @@ class MetaBox
                 else echo $display;
             }
         }
+        ?>
+        </div>
+        <?php
     }
 
     /**
+     * Output a MetaBox display component
      * @param $display
      * @param array $args
      * @return mixed
@@ -167,62 +208,46 @@ class MetaBox
     }
 
     /**
+     * Output the MetaBox Fields Display component
      * @param $post
      */
     private function fields($post)
     {
-        $form = IoC::getContainer('form');
         foreach ($this->fields as $field)
         {
             $name = $field['name'];
             if (ends_with($name, '[]')) $name = substr($name, 0, -2);
             $value = get_post_meta($post->ID, $name, true);
             $label = isset($field['label']) ? $field['label'] : ucwords(str_replace("_", " ", $name));
-            $values = isset($field['values']) ? $this->get_select_values($field['values']) : [];
+            $values = isset($field['values']) ? (is_array($field['values']) ? $field['values'] : $this->get_select_values($field['values'])) : [];
+            if (starts_with($field['type'], 'select')) $values = [' -- ' . $label . ' -- '] + $values;
+
+            if (is_callable($field['type']))
+                return $field['type']($field['name'], $label, $value, $values);
+
             switch ($field['type'])
             {
                 default: break;
 
                 case 'input':
-                    ?>
-                        <p><label for="<?php echo $field['name']; ?>"><?php echo $label; ?>:</label>
-                            <?php echo $form->input('text', $field['name'], $value, ['class' => 'widefat']); ?>
-                        </p>
-                    <?php
-                    break;
-
                 case 'textarea':
-                    ?>
-                    <p><label for="<?php echo $field['name']; ?>"><?php echo $label; ?>:</label>
-                        <?php echo $form->textarea($field['name'], $value, ['class' => 'widefat']); ?>
-                    </p>
-                    <?php
+                case 'checkbox':
+                    FormBuilder::$field['type']($field['name'], $label, $value);
                     break;
 
                 case 'select':
-                    ?>
-                    <p><label for="<?php echo $field['name']; ?>"><?php echo $label; ?>:</label>
-                        <?php echo $form->select($field['name'], $values, $value, ['class' => 'widefat']); ?>
-                    </p>
-                    <?php
-                    break;
-
                 case 'select_multiple':
-                    ?>
-                    <p><label for="<?php echo $field['name']; ?>"><?php echo $label; ?>:</label>
-                        <?php echo $form->select($field['name'], $values, $value, ['class' => 'widefat', 'multiple' => 'multiple']); ?>
-                    </p>
-                    <?php
-                    break;
-
-                case 'FormField':
-                    echo forward_static_call_array(['FormField', $field['name']], []);
+                case 'checkbox_multiple':
+                case 'radio':
+                    FormBuilder::$field['type']($field['name'], $label, $value, $values);
                     break;
             }
         }
     }
 
     /**
+     * Fetch a list of posts by $post_type and;
+     * Compose an array of data for use with a select dropdown
      * @param $post_type
      * @return array
      */
@@ -241,6 +266,7 @@ class MetaBox
     }
 
     /**
+     * Create a new MetaBox instance statically
      * @param $name
      * @param $args
      * @return mixed
@@ -252,6 +278,7 @@ class MetaBox
     }
 
     /**
+     * Initialize the MetaBox
      * @param $prefix
      * @param $name
      * @param $label
@@ -267,6 +294,7 @@ class MetaBox
     }
 
     /**
+     * Set the MetaBox post type
      * @param $post_type
      * @return $this
      */
@@ -277,6 +305,7 @@ class MetaBox
     }
 
     /**
+     * Set the MetaBox context on the page
      * @param $context
      * @return $this
      */
@@ -287,6 +316,7 @@ class MetaBox
     }
 
     /**
+     * Set the MetaBox priority on the page
      * @param $priority
      * @return $this
      */
@@ -297,6 +327,7 @@ class MetaBox
     }
 
     /**
+     * Set the MetaBox form fields
      * @param $fields
      * @return $this
      */
@@ -307,6 +338,7 @@ class MetaBox
     }
 
     /**
+     * Set the MetaBox content
      * @param $display
      * @return $this
      */
