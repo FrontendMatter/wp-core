@@ -110,13 +110,15 @@ class CRUD
     }
 
     /**
-     * Set the fields used for composing the Related List table columns
+     * Set the fields used for composing the Related List table columns;
+     * By default, the Post Related List (Related Meta Box) will copy this format;
      * @param $fields
      * @return $this
      */
     public function setListFields($fields)
     {
         $this->list_fields = $fields;
+        $this->post_related_list_fields = $fields;
         return $this;
     }
 
@@ -127,6 +129,24 @@ class CRUD
     public function getListFields()
     {
         return $this->list_fields;
+    }
+
+    /**
+     * Returns the stored instance
+     * @return mixed
+     */
+    public function getInstance()
+    {
+        return $this->instance;
+    }
+
+    /**
+     * Returns the stored related
+     * @return mixed
+     */
+    public function getRelated()
+    {
+        return $this->related;
     }
 
     /**
@@ -286,7 +306,6 @@ class CRUD
         {
             $related_id = $_REQUEST['related_id'];
             $is_post = !empty($_POST);
-            $related = get_post($related_id);
 
             if ($is_post)
             {
@@ -302,6 +321,8 @@ class CRUD
                 die();
             }
 
+            $related = get_post($related_id);
+
             wp_enqueue_script('ajax_edit_related', plugin_dir_url(__FILE__) . 'js/crud/ajax_edit_related.js', ['jquery'], '1.0', true);
             wp_localize_script(
                 'ajax_edit_related',
@@ -314,21 +335,16 @@ class CRUD
 
             ThickBox::getHeader();
             ?>
-
             <div class="col-md-12">
-                <h3>Edit <?php echo ucwords($this->related); ?></h3>
+                <h3>Edit <?php echo ucwords($this->getRelated()); ?></h3>
             </div>
             <hr/>
-            <form action="" class="edit-related-form" data-related-instance="<?php echo $this->instance; ?>" method="post">
+            <form action="" class="edit-related-form" data-related-instance="<?php echo $this->getInstance(); ?>" method="post">
                 <div class="col-md-12">
-                    <div class="form-group">
-                        <label class="control-label" for="">Title: </label>
-                        <input class="form-control" type="text" name="post_title" value="<?php echo esc_attr($related->post_title); ?>" />
-                    </div>
+                    <?php do_action('crud_' . $this->prefix . '_edit_' . $this->getRelated() . '_form', $related, $this); ?>
                     <?php echo Button::success('Save')->isSubmit()->pullRight(); ?>
                 </div>
             </form>
-
             <?php
             ThickBox::getFooter();
             die();
@@ -562,5 +578,16 @@ class CRUD
     public static function make($prefix, $post, $related)
     {
         return new static($prefix, $post, $related);
+    }
+
+    /**
+     * Hook into the Edit Related Form
+     * @param $callback
+     * @return $this
+     */
+    public function setForm($callback)
+    {
+        add_action('crud_' . $this->prefix . '_edit_' . $this->related . '_form', $callback);
+        return $this;
     }
 } 

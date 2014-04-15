@@ -219,7 +219,7 @@ class MetaBox
             if (ends_with($name, '[]')) $name = substr($name, 0, -2);
             $value = get_post_meta($post->ID, $name, true);
             $label = isset($field['label']) ? $field['label'] : ucwords(str_replace("_", " ", $name));
-            $values = isset($field['values']) ? (is_array($field['values']) ? $field['values'] : $this->get_select_values($field['values'])) : [];
+            $values = isset($field['values']) ? (is_array($field['values']) ? $field['values'] : FormBuilder::select_values($field['values'])) : [];
             if (starts_with($field['type'], 'select')) $values = [' -- ' . $label . ' -- '] + $values;
 
             if (is_callable($field['type']))
@@ -243,26 +243,6 @@ class MetaBox
                     break;
             }
         }
-    }
-
-    /**
-     * Fetch a list of posts by $post_type and;
-     * Compose an array of data for use with a select dropdown
-     * @param $post_type
-     * @return array
-     */
-    private function get_select_values($post_type)
-    {
-        $posts = get_posts([
-            'post_type' => $post_type,
-            'numberposts' => -1
-        ]);
-        $posts_values = [];
-
-        foreach($posts as $post)
-            $posts_values[$post->ID] = $post->post_title;
-
-        return $posts_values;
     }
 
     /**

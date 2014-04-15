@@ -112,7 +112,7 @@ class FormBuilder
         <strong><?php echo $label; ?></strong>
         <?php
         foreach($values as $value_id => $value_label) {
-            $checked = in_array( (string) $value_id, $value );
+            $checked = is_array($value) && in_array( (string) $value_id, $value );
             echo $this->checkbox($name, $value_label, $value_id, $checked);
         }
     }
@@ -127,11 +127,12 @@ class FormBuilder
      */
     private function select($name, $label, $value, $values, array $attributes = [])
     {
-        $attributes = array_merge(['class' => 'widefat'], $attributes);
+        $attributes = array_merge(['class' => 'form-control'], $attributes);
         ?>
-        <p><label for="<?php echo $name; ?>"><?php echo $label; ?>:</label>
+        <div class="form-group">
+            <label for="<?php echo $name; ?>"><?php echo $label; ?>:</label>
             <?php echo self::$form->select($name, $values, $value, $attributes); ?>
-        </p>
+        </div>
         <?php
     }
 
@@ -156,9 +157,10 @@ class FormBuilder
     private function textarea($name, $label, $value)
     {
         ?>
-        <p><label for="<?php echo $name; ?>"><?php echo $label; ?>:</label>
-            <?php echo self::$form->textarea($name, $value, ['class' => 'widefat']); ?>
-        </p>
+        <div class="form-group">
+            <label for="<?php echo $name; ?>"><?php echo $label; ?>:</label>
+            <?php echo self::$form->textarea($name, $value, ['class' => 'form-control']); ?>
+        </div>
         <?php
     }
 
@@ -171,9 +173,30 @@ class FormBuilder
     private function input($name, $label, $value)
     {
         ?>
-        <p><label for="<?php echo $name; ?>"><?php echo $label; ?>:</label>
-            <?php echo self::$form->input('text', $name, $value, ['class' => 'widefat']); ?>
-        </p>
+        <div class="form-group">
+            <label for="<?php echo $name; ?>"><?php echo $label; ?>:</label>
+            <?php echo self::$form->input('text', $name, $value, ['class' => 'form-control']); ?>
+        </div>
         <?php
+    }
+
+    /**
+     * Fetch a list of posts by $post_type and;
+     * Compose an array of data for use with a select dropdown
+     * @param $post_type
+     * @return array
+     */
+    public static function select_values($post_type)
+    {
+        $posts = get_posts([
+            'post_type' => $post_type,
+            'numberposts' => -1
+        ]);
+        $posts_values = [];
+
+        foreach($posts as $post)
+            $posts_values[$post->ID] = $post->post_title;
+
+        return $posts_values;
     }
 } 
