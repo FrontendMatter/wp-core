@@ -8,9 +8,8 @@
             e.preventDefault();
 
             var instance = $(this).data('relatedInstance');
-            var instance_data = parent.crud_instances[instance].instance;
             var data = {
-                action: instance_data.prefix + '_edit_' + instance_data.related,
+                action: related_data.action,
                 nonce: related_data.nonce,
                 related_id: related_data.related_id
             };

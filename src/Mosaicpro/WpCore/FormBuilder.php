@@ -85,7 +85,11 @@ class FormBuilder
      */
     private function checkbox($name, $label, $value, $checked = null)
     {
-        if (empty($value)) $value = 1;
+        if (empty($value))
+        {
+            if (is_null($checked)) $checked = [];
+            $value = 1;
+        }
         ?>
         <div class="checkbox">
             <label>

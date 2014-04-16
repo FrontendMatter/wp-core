@@ -5,8 +5,13 @@
     window.mp_crud_related = function(instance)
     {
         this.instance = instance;
-        this.list = '#' + instance.prefix + '_' + instance.related + '_list';
+        this.list = '#' + instance.prefix + '_' + this.getRelatedId() + '_list';
     };
+
+    window.mp_crud_related.prototype.getRelatedId = function()
+    {
+        return $.isArray(this.instance.related) ? this.instance.related.join('_') : this.instance.related;
+    }
 
     window.mp_crud_related.prototype.addPostRelated = function(related)
     {
@@ -14,7 +19,7 @@
             that = this;
 
         var data = {
-            action: related_data.prefix + '_add_' + related_data.post + '_' + related_data.related,
+            action: related_data.prefix + '_add_' + related_data.post + '_' + that.getRelatedId(),
             nonce: related_data.nonce,
             post_id: related_data.post_id,
             related: related
@@ -37,7 +42,7 @@
             that = this;
 
         var data = {
-            action: related_data.prefix + '_remove_' + related_data.post + '_' + related_data.related,
+            action: related_data.prefix + '_remove_' + related_data.post + '_' + that.getRelatedId(),
             nonce: related_data.nonce,
             post_id: related_data.post_id,
             related_id: related_id
@@ -59,7 +64,7 @@
         var that = this;
         var related_data = this.instance;
         var data = {
-            action: related_data.prefix + '_list_' + related_data.post + '_' + related_data.related,
+            action: related_data.prefix + '_list_' + related_data.post + '_' + that.getRelatedId(),
             nonce: related_data.nonce,
             post_id: related_data.post_id
         };
@@ -71,7 +76,7 @@
                     return alert('An error occurred while fetching the data');
 
                 if (typeof response.success !== 'undefined')
-                    $(that.list).html(response.data);
+                    $(that.list).html(typeof response.data !== 'undefined' ? response.data : '');
             });
     };
 

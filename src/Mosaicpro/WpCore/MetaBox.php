@@ -327,4 +327,32 @@ class MetaBox
         $this->display = $display;
         return $this;
     }
+
+    /**
+     * Update an existing MetaBox
+     * @param $metabox
+     * @param $post_type
+     * @param $old_context
+     * @param $new_label
+     * @param $new_callback
+     * @param $new_context
+     * @param $new_priority
+     */
+    public static function update( $metabox, $post_type, $old_context, $new_label, $new_callback, $new_context, $new_priority )
+    {
+        if (!is_array($post_type))
+            $post_type = [$post_type];
+
+        foreach($post_type as $pt)
+            self::update_for_post_type($metabox, $pt, $old_context, $new_label, $new_callback, $new_context, $new_priority);
+    }
+
+    public static function update_for_post_type( $metabox, $post_type, $old_context, $new_label, $new_callback, $new_context, $new_priority )
+    {
+        add_action('admin_head', function() use ($metabox, $post_type, $old_context, $new_label, $new_callback, $new_context, $new_priority)
+        {
+            remove_meta_box( $metabox . 'div', $post_type, $old_context );
+            add_meta_box( $metabox, $new_label, $new_callback, $post_type, $new_context, $new_priority);
+        });
+    }
 }
