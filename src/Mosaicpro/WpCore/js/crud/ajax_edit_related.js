@@ -22,6 +22,9 @@
 
                     if (typeof response.success !== 'undefined')
                     {
+                        if (response.success !== true)
+                            return alert(response.data);
+
                         parent.crud_instances[instance].listPostRelated();
                         parent.tb_remove();
                     }

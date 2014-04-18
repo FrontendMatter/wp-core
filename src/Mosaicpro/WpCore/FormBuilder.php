@@ -185,21 +185,58 @@ class FormBuilder
     }
 
     /**
+     * Create a group of select fields for editing hh:mm:ss format
+     * @param $name
+     * @param $label
+     * @param $value
+     */
+    private function select_hhmmss($name, $label, $value)
+    {
+        $select = [ 'hh' => [00,23], 'mm' => [0,59], 'ss' => [0,59] ];
+        ?>
+        <div class="form-group">
+            <label for="<?php echo $name; ?>"><?php echo $label; ?>:</label><br/>
+            <?php
+            foreach ($select as $select_name => $range)
+            {
+                $range = range($range[0], $range[1]);
+                $values = [];
+                foreach($range as $r)
+                {
+                    $fr = sprintf("%02d", $r);
+                    $values[$fr] = $fr;
+                }
+                echo self::$form->select($name . "[" . $select_name . "]", $values, $value[$select_name]) . PHP_EOL;
+            }
+            ?>
+        </div>
+        <?php
+    }
+
+    /**
      * Fetch a list of posts by $post_type and;
      * Compose an array of data for use with a select dropdown
      * @param $post_type
+     * @param string $default_label
+     * @param array $query
      * @return array
      */
-    public static function select_values($post_type)
+    public static function select_values($post_type, $default_label = '-- Select --', array $query = [])
     {
-        $posts = get_posts([
-            'post_type' => $post_type,
-            'numberposts' => -1
-        ]);
         $posts_values = [];
+        if (!is_array($post_type))
+        {
+            $query_default = [
+                'post_type' => $post_type,
+                'numberposts' => -1
+            ];
+            $query = array_merge($query_default, $query);
+            $posts = get_posts($query);
+        }
+        else $posts = $post_type;
 
-        foreach($posts as $post)
-            $posts_values[$post->ID] = $post->post_title;
+        foreach($posts as $post) $posts_values[$post->ID] = $post->post_title;
+        $posts_values = [$default_label] + $posts_values;
 
         return $posts_values;
     }

@@ -54,11 +54,13 @@ class Date
             $time = sprintf('%d seconds', $seconds);
         if($hours < 1 && $seconds < 1)
             $time = sprintf('%d minutes', $minutes);
-        if($hours < 1 && $seconds > 0)
+        if($hours < 1 && $minutes > 1 && $seconds > 1)
             $time = sprintf('%d minutes %d seconds', $minutes, $seconds);
         if($minutes < 1 && $seconds == 0)
             $time = sprintf('%d hours', $hours);
-        if($hours > 0 && $minutes > 0 && $seconds > 0)
+        if($hours > 1 && $minutes > 1)
+            $time = sprintf('%d hours %d minutes', $hours, $minutes);
+        if($hours > 1 && $minutes > 1 && $seconds > 1)
             $time = sprintf('%dh %dm %ds', $hours, $minutes, $seconds);
 
         return $time;

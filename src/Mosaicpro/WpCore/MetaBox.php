@@ -133,25 +133,7 @@ class MetaBox
         if (empty($this->fields))
             return $this;
 
-        add_action('save_post', function($id)
-        {
-            foreach($this->fields as $field)
-            {
-                $name = $field['name'];
-                if (ends_with($name, '[]')) $name = substr($name, 0, -2);
-
-                if ($field['type'] == 'checkbox')
-                    update_post_meta( $id, $name, '' );
-
-                if ( isset($_POST[$name]) )
-                {
-                    $value = $_POST[$name];
-                    if (!is_array($value)) $value = strip_tags($value);
-                    update_post_meta( $id, $name, $value );
-                }
-            }
-        }, 10, 2);
-
+        PostData::save_meta_fields($this->fields);
         return $this;
     }
 
@@ -232,6 +214,7 @@ class MetaBox
                 case 'input':
                 case 'textarea':
                 case 'checkbox':
+                case 'select_hhmmss':
                     FormBuilder::$field['type']($field['name'], $label, $value);
                     break;
 
@@ -347,6 +330,15 @@ class MetaBox
             self::update_for_post_type($metabox, $pt, $old_context, $new_label, $new_callback, $new_context, $new_priority);
     }
 
+    /**
+     * @param $metabox
+     * @param $post_type
+     * @param $old_context
+     * @param $new_label
+     * @param $new_callback
+     * @param $new_context
+     * @param $new_priority
+     */
     public static function update_for_post_type( $metabox, $post_type, $old_context, $new_label, $new_callback, $new_context, $new_priority )
     {
         add_action('admin_head', function() use ($metabox, $post_type, $old_context, $new_label, $new_callback, $new_context, $new_priority)

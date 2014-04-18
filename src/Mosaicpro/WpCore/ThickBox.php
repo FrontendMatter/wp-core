@@ -1,5 +1,7 @@
 <?php namespace Mosaicpro\WpCore;
 
+use Mosaicpro\Core\IoC;
+
 /**
  * Class ThickBox
  * @package Mosaicpro\WpCore
@@ -43,6 +45,18 @@ class ThickBox
     protected $type;
 
     /**
+     * Holds the Html utility
+     * @var mixed
+     */
+    protected $html;
+
+    /**
+     * Holds the button attributes
+     * @var array
+     */
+    protected $button_attributes = ['class' => 'button thickbox'];
+
+    /**
      * Holds the inline ThickBox type name
      */
     const TB_TYPE_INLINE = 'TB_inline';
@@ -73,6 +87,8 @@ class ThickBox
 
         if (isset($url)) $this->url = $url;
         if (isset($url_data)) $this->url_data = $url_data;
+
+        $this->html = IoC::getContainer('html');
     }
 
     /**
@@ -84,6 +100,25 @@ class ThickBox
         $args = func_get_args();
         $args = $args[0];
         return new static($args);
+    }
+
+    /**
+     * @param array $attributes
+     * @return $this
+     */
+    public function setButtonAttributes(array $attributes = [])
+    {
+        $this->button_attributes = array_merge($this->button_attributes, $attributes);
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    private function getButtonAttributes()
+    {
+        $attributes = $this->button_attributes;
+        return $this->html->attributes($attributes);
     }
 
     /**
@@ -100,7 +135,7 @@ class ThickBox
         }
         else $this->url_data = '&inlineId=' . $this->id;
 
-        $output = '<a href="' . $this->url . '#' . $this->type . '?width=600&height=550' . $this->url_data . '" class="button thickbox">' . $this->label . '</a>' . PHP_EOL;
+        $output = '<a href="' . $this->url . '#' . $this->type . '?width=600&height=550' . $this->url_data . '"' . $this->getButtonAttributes() . '>' . $this->label . '</a>' . PHP_EOL;
 
         if ($this->type === self::TB_TYPE_INLINE)
             $output .= '

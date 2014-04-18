@@ -61,6 +61,30 @@ class CRUD
     protected $post_related_list_actions = ['default' => ['edit_related_thickbox', 'remove_from_post']];
 
     /**
+     * Holds the edit form buttons
+     * @var array
+     */
+    protected $form_buttons = ['default' => ['save', 'full_edit']];
+
+    /**
+     * Holds the edit form fields
+     * @var array
+     */
+    protected $form_fields = ['default' => ['post_title']];
+
+    /**
+     * Holds form validation callbacks
+     * @var array
+     */
+    protected $form_validation = [];
+
+    /**
+     * Holds the latest form validation error
+     * @var
+     */
+    protected $form_validation_error;
+
+    /**
      * Holds custom query arguments for fetching the Related List
      * @var array
      */
@@ -106,6 +130,16 @@ class CRUD
     }
 
     /**
+     * @param $related
+     * @param $prefix
+     * @return $this
+     */
+    private function setRelatedPrefix($related, $prefix)
+    {
+        return $this->setComponents('related_prefix', $related, $prefix);
+    }
+
+    /**
      * Create a new CRUD instance
      * @param $prefix
      * @param $post
@@ -117,42 +151,77 @@ class CRUD
         $this->prefix = $prefix;
         $this->mixed = is_array($related);
 
+        $this->setRelated($related);
+        $this->setInstance();
+        $this->setPostTypeOptions('default', ['args' => ['show_in_menu' => $prefix]]);
+        return $this;
+    }
+
+    /**
+     * Set the instance identifier
+     */
+    private function setInstance()
+    {
+        if ($this->mixed) $this->instance = 'crud_related_instance_mixed_' . $this->getRelatedId();
+        else $this->instance = 'crud_related_instance_' . $this->getRelated();
+    }
+
+    /**
+     * Sets the Related options
+     * @param $related
+     */
+    private function setRelated($related)
+    {
         if ($this->mixed)
         {
             foreach ($related as $related_item)
             {
                 if (is_array($related_item))
-                {
-                    $this->related_prefix[$related_item[1]] = $related_item[0];
-                    $this->setListFields($related_item[0] . $related_item[1], $this->list_fields['default']);
-                    $this->setListActions($related_item[0] . $related_item[1], $this->list_actions['default']);
-                    $this->setPostRelatedListActions($related_item[0] . $related_item[1], $this->post_related_list_actions['default']);
-                    $this->related[] = $related_item[1];
-                }
-                else {
-                    $this->related_prefix[$related_item] = $prefix;
-                    $this->setListFields($prefix . '_' . $related_item, $this->list_fields['default']);
-                    $this->setListActions($prefix . '_' . $related_item, $this->list_actions['default']);
-                    $this->setPostRelatedListActions($prefix . '_' . $related_item, $this->post_related_list_actions['default']);
-                    $this->related[] = $related_item;
-                }
+                    $this->setRelatedDefaults($related_item[1], $related_item[0], true);
+                else
+                    $this->setRelatedDefaults($related_item, $this->prefix, true);
             }
         }
         else
-        {
-            $this->related = $related;
-            $this->related_prefix[$related] = $prefix;
-            $this->setListFields($prefix . '_' . $related, $this->list_fields['default']);
-            $this->setListActions($prefix . '_' . $related, $this->list_actions['default']);
-            $this->setPostRelatedListActions($prefix . '_' . $related, $this->post_related_list_actions['default']);
-        }
+            $this->setRelatedDefaults($related, $this->prefix);
+    }
 
-        if ($this->mixed) $this->instance = 'crud_related_instance_mixed_' . $this->getRelatedId();
-        else $this->instance = 'crud_related_instance_' . $related;
+    /**
+     * @param $related
+     * @param $prefix
+     * @param bool $array
+     */
+    private function setRelatedDefaults($related, $prefix, $array = false)
+    {
+        $this->setRelatedPrefix($related, $prefix);
+        $this->setListFields($prefix . '_' . $related, $this->list_fields['default']);
+        $this->setListActions($prefix . '_' . $related, $this->list_actions['default']);
+        $this->setPostRelatedListActions($prefix . '_' . $related, $this->post_related_list_actions['default']);
 
-        $this->setPostTypeOptions('default', ['args' => ['show_in_menu' => $prefix]]);
+        if ($array) $this->related[] = $related;
+        else $this->related = $related;
+    }
 
-        return $this;
+    /**
+     * Get an array of the Related post types
+     * @return array
+     */
+    private function getRelatedPostTypes()
+    {
+        $types = $this->getRelatedType();
+        if (!is_array($types)) $types = [$types];
+        return $types;
+    }
+
+    /**
+     * Get an array of all post types
+     * @return array
+     */
+    private function getPostTypes()
+    {
+        $types = $this->getRelatedPostTypes();
+        array_unshift($types, $this->prefix . '_' . $this->post);
+        return $types;
     }
 
     /**
@@ -160,15 +229,12 @@ class CRUD
      */
     private function setup_post_types()
     {
-        $types = $this->getRelatedType();
-        if (!is_array($types)) $types = [$types];
-        array_unshift($types, $this->prefix . '_' . $this->post);
-
+        $types = $this->getPostTypes();
         $default_options = $this->getPostTypeOptions();
+
         foreach($types as $type)
         {
-            if (post_type_exists($type))
-                continue;
+            if (post_type_exists($type)) continue;
 
             $options = $this->getPostTypeOptions($type);
             $options = array_merge($default_options, $options);
@@ -216,8 +282,8 @@ class CRUD
      */
     public function setListFields($related, $fields)
     {
-        $this->list_fields[$related] = $fields;
-        $this->post_related_list_fields[$related] = $fields;
+        $this->setComponents('list_fields', $related, $fields);
+        $this->setComponents('post_related_list_fields', $related, $fields);
         return $this;
     }
 
@@ -249,6 +315,17 @@ class CRUD
     }
 
     /**
+     * Get an array of all registered Related short names (without prefix)
+     * @return array|mixed
+     */
+    private function getRelatedList()
+    {
+        $related_list = [$this->getRelated()];
+        if ($this->mixed) $related_list = $this->getRelated();
+        return $related_list;
+    }
+
+    /**
      * Set the post related list fields
      * Can also accept a $fields closure that allows to copy the list_fields
      * e.g. setPostRelatedListFields('my_post_type', function($instance){
@@ -260,8 +337,7 @@ class CRUD
      */
     public function setPostRelatedListFields($related, $fields)
     {
-        $this->post_related_list_fields[$related] = is_callable($fields) ? $fields($this) : $fields;
-        return $this;
+        return $this->setComponents('post_related_list_fields', $related, $fields);
     }
 
     /**
@@ -272,8 +348,7 @@ class CRUD
      */
     public function setListActions($related, $actions)
     {
-        $this->list_actions[$related] = $actions;
-        return $this;
+        return $this->setComponents('list_actions', $related, $actions);
     }
 
     /**
@@ -309,12 +384,165 @@ class CRUD
 
     /**
      * @param $related
-     * @param array $post_related_list_actions
+     * @param array $actions
      * @return $this
      */
-    public function setPostRelatedListActions($related, $post_related_list_actions)
+    public function setPostRelatedListActions($related, $actions)
     {
-        $this->post_related_list_actions[$related] = $post_related_list_actions;
+        return $this->setComponents('post_related_list_actions', $related, $actions);
+    }
+
+    /**
+     * Hook into the Edit Related Form
+     * @param $related
+     * @param $callback
+     * @return $this
+     */
+    public function setForm($related, $callback)
+    {
+        add_action('crud_' . $this->prefix . '_edit_' . $related . '_form', $callback);
+        return $this;
+    }
+
+    /**
+     * Initialize the Form buttons
+     */
+    private function initFormButtons()
+    {
+        $post_types = $this->getRelatedType();
+        if (!is_array($post_types)) $post_types = [$post_types];
+
+        foreach($post_types as $post_type)
+        {
+            $buttons = isset($this->form_buttons[$post_type]) ? $this->form_buttons[$post_type] : $this->form_buttons['default'];
+            foreach($buttons as $button_id)
+            {
+                if (is_callable($button_id))
+                    add_action('crud_' . $this->prefix . '_edit_' . $post_type . '_form_buttons', $button_id);
+                else
+                    add_action('crud_' . $this->prefix . '_edit_' . $post_type . '_form_buttons', [$this, 'getFormButton_' . $button_id]);
+            }
+        }
+    }
+
+    /**
+     * Sets the Form Buttons
+     * @param $post_type
+     * @param $buttons
+     * @return $this
+     */
+    public function setFormButtons($post_type, $buttons)
+    {
+        return $this->setComponents('form_buttons', $post_type, $buttons);
+    }
+
+    /**
+     * Form Save Button
+     * @param $post
+     */
+    public function getFormButton_save($post)
+    {
+        echo Button::success('Save')->isSubmit()->pullRight();
+    }
+
+    /**
+     * Form Full Edit Button
+     * @param $post
+     */
+    public function getFormButton_full_edit($post)
+    {
+        echo Button::link('Go to full edit page')->addUrl(get_edit_post_link($post->ID))->addAttributes(['target' => '_parent'])->pullRight();
+    }
+
+    /**
+     * Initialize the Form Fields
+     */
+    private function initFormFields()
+    {
+        $post_types = $this->getPostTypes();
+        foreach($post_types as $post_type)
+        {
+            $fields = isset($this->form_fields[$post_type]) ? $this->form_fields[$post_type] : $this->form_fields['default'];
+            foreach($fields as $field_id)
+            {
+                if (is_callable($field_id)) add_action('crud_' . $this->prefix . '_edit_' . $post_type . '_form_fields', $field_id);
+                else add_action('crud_' . $this->prefix . '_edit_' . $post_type . '_form_fields', [$this, 'getFormField_' . $field_id]);
+            }
+        }
+    }
+
+    /**
+     * Set a form validation callback
+     * @param $form
+     * @param $callback
+     * @return $this
+     */
+    public function validateForm($form, $callback)
+    {
+        return $this->setComponents('form_validation', $form, $callback);
+    }
+
+    /**
+     * Returns whether the form passes validation
+     * @param $form
+     * @return bool
+     */
+    private function formPassesValidation($form)
+    {
+        $validation = empty($this->form_validation[$form]) ? true : $this->form_validation[$form];
+        return is_callable($validation) ? $validation($this) : $validation;
+    }
+
+    /**
+     * Set the form validation error
+     * @param string $message
+     * @return bool
+     */
+    public function setFormValidationError($message = 'Form Validation Error')
+    {
+        $this->form_validation_error = $message;
+        return false;
+    }
+
+    /**
+     * Get the latest form validation error
+     * @return mixed
+     */
+    private function getFormValidationError()
+    {
+        return $this->form_validation_error;
+    }
+
+    /**
+     * @param $post_type
+     * @param $fields
+     * @return $this
+     */
+    public function setFormFields($post_type, $fields)
+    {
+        return $this->setComponents('form_fields', $post_type, $fields);
+    }
+
+    /**
+     * Predefined post_title Form Field
+     * @param $post
+     */
+    public function getFormField_post_title($post)
+    {
+        FormBuilder::input('post_title', 'Title', esc_attr($post->post_title));
+    }
+
+    /**
+     * Sets the $component for $post_type as $args
+     * @param string $component
+     * @param $post_type
+     * @param $args
+     * @return $this
+     */
+    private function setComponents($component = '', $post_type, $args)
+    {
+        $this->{$component}[$post_type] = $args;
+        // $this->{$component}[$post_type] = is_callable($args) ? $args($this) : $args;
         return $this;
     }
 
@@ -367,10 +595,22 @@ class CRUD
      */
     public static function setPostTypeLabel($post_type, $label)
     {
-        add_filter('crud_post_type_label_' . $post_type, function($label) use ($label)
+        add_filter('crud_post_type_label_' . $post_type, function() use ($label)
         {
             return $label;
         });
+    }
+
+    /**
+     * Get the Post ID on post.php and post-new.php pages
+     * @return bool|int
+     */
+    public static function getPostID()
+    {
+        $post_id = false;
+        if( isset($_GET['post']) ) $post_id = absint($_GET['post']);
+        elseif( isset($_POST['post_ID']) ) $post_id = absint($_POST['post_ID']);
+        return $post_id;
     }
 
     /**
@@ -379,10 +619,12 @@ class CRUD
      */
     public function register()
     {
+        $this->initFormFields();
+        $this->initFormButtons();
         $this->setup_post_types();
         $this->register_scripts();
-        $this->handle_ajax_list_related();
         $this->handle_ajax_edit_related();
+        $this->handle_ajax_list_related();
         $this->handle_ajax_list_post_related();
         $this->handle_ajax_list_post_related_mixed();
         $this->handle_ajax_add_post_related();
@@ -423,9 +665,7 @@ class CRUD
      */
     private function handle_ajax_list_related()
     {
-        $related_list = [$this->getRelated()];
-        if ($this->mixed) $related_list = $this->getRelated();
-
+        $related_list = $this->getRelatedList();
         foreach($related_list as $related)
         {
             add_action('wp_ajax_' . $this->prefix . '_list_' . $related, function($related) use ($related)
@@ -456,26 +696,47 @@ class CRUD
      */
     private function handle_ajax_edit_related()
     {
-        $related_list = [$this->getRelatedType()];
-        if ($this->mixed) $related_list = $this->getRelatedType();
-
+        $related_list = $this->getRelatedPostTypes();
         foreach($related_list as $related_item)
         {
             add_action('wp_ajax_' . $this->prefix . '_edit_' . $related_item, function($related_item) use ($related_item)
             {
-                $related_id = $_REQUEST['related_id'];
+                $related_id = !empty($_REQUEST['related_id']) ? $_REQUEST['related_id'] : false;
                 $is_post = !empty($_POST);
 
                 if ($is_post)
                 {
                     check_ajax_referer( $this->prefix . '_' . $related_item . '_nonce', 'nonce' );
                     if ( false ) wp_send_json_error( 'Security error' );
+                    if ( !$this->formPassesValidation($related_item) ) wp_send_json_error( $this->getFormValidationError() );
 
-                    $related_save = [
-                        'ID' => $related_id,
-                        'post_title' => $_POST['post_title']
-                    ];
-                    wp_update_post($related_save);
+                    $related_save = $_POST;
+                    $related_save['post_status'] = 'publish';
+                    $related_save['post_type'] = $related_item;
+
+                    unset($related_save['nonce']);
+                    unset($related_save['action']);
+
+                    if ($related_id) $related_save['ID'] = $related_id;
+                    unset($related_save['related_id']);
+
+                    if (isset($related_save['meta']))
+                    {
+                        $save_meta_fields = array_keys($related_save['meta']);
+                        $save_meta_fields = array_map(function($value){ return 'meta[' . $value . ']'; }, $save_meta_fields);
+                        PostData::save_meta_fields($save_meta_fields);
+                        unset($related_save['meta']);
+                    }
+
+                    if ($related_id) $saved = wp_update_post($related_save, true);
+                    else {
+                        $post_type_options = $this->getPostTypeOptions($related_item);
+                        $supports = isset($post_type_options['args']['supports']) ? $post_type_options['args']['supports'] : true;
+                        if (!$supports) PostData::allow_empty();
+                        $saved = wp_insert_post($related_save, true);
+                    }
+
+                    if (is_a($saved, 'WP_Error')) wp_send_json_error($saved->get_error_messages());
                     wp_send_json_success();
                     die();
                 }
@@ -501,10 +762,11 @@ class CRUD
                 <hr/>
                 <form action="" class="edit-related-form" data-related-instance="<?php echo $this->getInstance(); ?>" method="post">
                     <div class="col-md-12">
-                        <?php FormBuilder::input('post_title', 'Title', esc_attr($related->post_title)); ?>
-                        <?php do_action('crud_' . $this->prefix . '_edit_' . $related_item . '_form', $related, $this); ?>
-                        <?php echo Button::success('Save')->isSubmit()->pullRight(); ?>
-                        <?php echo Button::link('Go to full edit page')->addUrl(get_edit_post_link($related->ID))->addAttributes(['target' => '_parent'])->pullRight(); ?>
+                        <?php
+                        do_action('crud_' . $this->prefix . '_edit_' . $related_item . '_form_fields');
+                        do_action('crud_' . $this->prefix . '_edit_' . $related_item . '_form', $related, $this);
+                        do_action('crud_' . $this->prefix . '_edit_' . $related_item . '_form_buttons', $related);
+                        ?>
                     </div>
                 </form>
                 <?php
@@ -519,13 +781,10 @@ class CRUD
      */
     private function handle_ajax_list_post_related()
     {
-        if (is_array($this->getRelated()))
-            return false;
-
+        if (is_array($this->getRelated())) return false;
         add_action('wp_ajax_' . $this->prefix . '_list_' . $this->post . '_' . $this->getRelated(), function()
         {
             check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
-
             if ( false ) wp_send_json_error( 'Security error' );
 
             $post_id = $_POST['post_id'];
@@ -535,11 +794,8 @@ class CRUD
             if (!is_array($list) || empty($list)) $list = [];
 
             $list_ids = [];
-            foreach($list as $list_item)
-                $list_ids[] = $list_item['id'];
-
-            if (empty($list_ids))
-                return wp_send_json_success();
+            foreach($list as $list_item) $list_ids[] = $list_item['id'];
+            if (empty($list_ids)) return wp_send_json_success();
 
             $related_posts = get_posts([
                 'post_type' => $this->getRelatedType(),
@@ -557,13 +813,10 @@ class CRUD
      */
     private function handle_ajax_list_post_related_mixed()
     {
-        if (!is_array($this->getRelated()))
-            return false;
-
+        if (!is_array($this->getRelated())) return false;
         add_action('wp_ajax_' . $this->prefix . '_list_' . $this->post . '_' . $this->getRelatedId(), function()
         {
             check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
-
             if ( false ) wp_send_json_error( 'Security error' );
 
             $post_id = $_POST['post_id'];
@@ -573,12 +826,9 @@ class CRUD
             if (!is_array($list) || empty($list)) $list = [];
 
             $list_ids = [];
-            foreach($list as $list_item)
-                $list_ids[] = $list_item['id'];
-
+            foreach($list as $list_item) $list_ids[] = $list_item['id'];
             $list_ids = array_unique($list_ids);
-            if (empty($list_ids))
-                return wp_send_json_success();
+            if (empty($list_ids)) return wp_send_json_success();
 
             $related_posts = get_posts([
                 'post_type' => $this->getRelatedType(),
@@ -600,9 +850,7 @@ class CRUD
      */
     private function get_list_format($format_key, $related_posts, $prefix = '')
     {
-        if (is_callable($format_key))
-            return $format_key($related_posts);
-
+        if (is_callable($format_key)) return $format_key($related_posts);
         return $this->{"get_list_format_" . $format_key}($related_posts, $prefix);
     }
 
@@ -783,7 +1031,6 @@ class CRUD
         add_action('wp_ajax_' . $this->prefix . '_add_' . $this->post . '_' . $this->getRelatedId(), function()
         {
             check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
-
             if ( false ) wp_send_json_error( 'Security error' );
 
             $post_id = $_POST['post_id'];
@@ -808,7 +1055,6 @@ class CRUD
         add_action('wp_ajax_' . $this->prefix . '_remove_' . $this->post . '_' . $this->getRelatedId(), function()
         {
             check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
-
             if ( false ) wp_send_json_error( 'Security error' );
 
             $post_id = $_POST['post_id'];
@@ -835,17 +1081,5 @@ class CRUD
     public static function make($prefix, $post, $related)
     {
         return new static($prefix, $post, $related);
-    }
-
-    /**
-     * Hook into the Edit Related Form
-     * @param $related
-     * @param $callback
-     * @return $this
-     */
-    public function setForm($related, $callback)
-    {
-        add_action('crud_' . $this->prefix . '_edit_' . $related . '_form', $callback);
-        return $this;
     }
 } 
