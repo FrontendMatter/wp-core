@@ -40,6 +40,10 @@ class PostType
             )
         );
         $args = array_merge($args_default, $args);
-        register_post_type($prefix . '_' . $slug_single, $args);
+
+        add_action('init', function() use ($prefix, $slug_single, $args)
+        {
+            register_post_type($prefix . '_' . $slug_single, $args);
+        });
     }
 }

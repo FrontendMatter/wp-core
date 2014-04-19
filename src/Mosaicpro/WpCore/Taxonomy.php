@@ -7,35 +7,119 @@
 class Taxonomy
 {
     /**
-     * Register a Taxonomy
-     * @param $name
-     * @param $post_type
-     * @param array $args
-     * @param bool $taxonomy_type
-     * @param bool $update_meta_box
-     * @return bool
+     * Holds the Taxonomy name
+     * @var array
      */
-    public static function register($name, $post_type, array $args = [], $taxonomy_type = false, $update_meta_box = false)
+    protected $name;
+
+    /**
+     * Holds the Taxonomy post types
+     * @var
+     */
+    protected $post_type;
+
+    /**
+     * Holds the Taxonomy type
+     * @var
+     */
+    protected $type;
+
+    /**
+     * Holds the Taxonomy options
+     * @var array
+     */
+    protected $args = [];
+
+    /**
+     * Holds whether the plugin is being activated right now
+     * @var bool
+     */
+    protected $plugin_activating = false;
+
+    /**
+     * Create a new Taxonomy instance
+     * @param $name
+     */
+    private function __construct($name)
+    {
+        if (!is_array($name)) $name = [$name, $name . 's'];
+        $this->name = $name;
+        $this->plugin_activating = defined('MP_PLUGIN_ACTIVATING');
+        return $this;
+    }
+
+    /**
+     * Create a new Taxonomy instance statically
+     * @param $name
+     * @return static
+     */
+    public static function make($name)
+    {
+        return new static($name);
+    }
+
+    /**
+     * Set the Taxonomy type
+     * @param $type
+     * @return $this
+     */
+    public function setType($type)
+    {
+        $this->type = $type;
+        return $this;
+    }
+
+    /**
+     * Set the Taxonomy post types
+     * @param $post_type
+     * @return $this
+     */
+    public function setPostType($post_type)
     {
         if (!is_array($post_type)) $post_type = [$post_type];
-        if (!is_array($name)) $name = [$name, $name . 's'];
-        $single = isset($name[0]) ? $name[0] : false;
-        $multiple = isset($name[1]) ? $name[1] : false;
+        $this->post_type = $post_type;
+        return $this;
+    }
+
+    /**
+     * Set the Taxonomy options
+     * @param $option
+     * @param array $args
+     * @return $this
+     */
+    public function setOption($option, array $args = [])
+    {
+        $this->args[$option] = $args;
+        return $this;
+    }
+
+    /**
+     * Register a Taxonomy
+     * @return bool
+     */
+    public function register()
+    {
+        $args = $this->args;
+        $update_meta_box = isset($args['update_meta_box']) ? $args['update_meta_box'] : false;
+
+        $single = isset($this->name[0]) ? $this->name[0] : false;
+        $multiple = isset($this->name[1]) ? $this->name[1] : false;
         if (!$single || !$multiple) return false;
 
         $label_single = ucwords($single);
         $label_multiple = ucwords($multiple);
         $slug_single = str_replace(" ", "_", $single);
 
-        if ($taxonomy_type && $taxonomy_type == 'radio')
+        if ($this->type == 'radio')
         {
             // Setup Radio MetaBox Callback
             $args['meta_box_cb'] = function($post, $taxonomy) use ($slug_single)
             {
                 return self::radio($post, $taxonomy);
             };
+
             // Load Radio Taxonomy required scripts
-            self::radio_script($slug_single, (is_array($post_type) ? $post_type : [$post_type]));
+            self::radio_script($slug_single, $this->post_type);
         }
 
         $args_default = array(
@@ -57,31 +141,28 @@ class Taxonomy
             )
         );
         $args = array_merge($args_default, $args);
-        register_taxonomy($slug_single, $post_type, $args);
-        register_taxonomy_for_object_type( $slug_single, $post_type );
+
+        if ($this->plugin_activating)
+        {
+            register_taxonomy($slug_single, $this->post_type, $args);
+            register_taxonomy_for_object_type( $slug_single, $this->post_type );
+        }
+        else
+        {
+            add_action('init', function() use ($slug_single, $args)
+            {
+                register_taxonomy($slug_single, $this->post_type, $args);
+                register_taxonomy_for_object_type( $slug_single, $this->post_type );
+            });
+        }
 
         // Update Taxonomy meta box
         // Currently supported only by Radio Taxonomies
-        if ($update_meta_box && $taxonomy_type == 'radio')
+        if ($update_meta_box && $this->type == 'radio')
         {
-            MetaBox::update($slug_single, $post_type, 'side', $update_meta_box['label'],
+            MetaBox::update($slug_single, $this->post_type, 'side', $update_meta_box['label'],
                 function($post) use ($slug_single) { return self::radio($post, $slug_single); },
                 $update_meta_box['context'], $update_meta_box['priority']);
-        }
-    }
-
-    /**
-     * Register multiple Taxonomies
-     * @param array $taxonomies
-     */
-    public static function registerMany(array $taxonomies)
-    {
-        foreach ($taxonomies as $taxonomy => $args)
-        {
-            $taxonomy_args = isset($args['args']) ? $args['args'] : [];
-            $taxonomy_type = isset($args['taxonomy_type']) ? $args['taxonomy_type'] : false;
-            $update_meta_box = isset($args['update_meta_box']) ? $args['update_meta_box'] : false;
-            self::register($taxonomy, $args['post_type'], $taxonomy_args, $taxonomy_type, $update_meta_box);
         }
     }
 
