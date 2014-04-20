@@ -145,14 +145,16 @@ class Taxonomy
         if ($this->plugin_activating)
         {
             register_taxonomy($slug_single, $this->post_type, $args);
-            register_taxonomy_for_object_type( $slug_single, $this->post_type );
+            foreach($this->post_type as $pt)
+                register_taxonomy_for_object_type( $slug_single, $pt );
         }
         else
         {
             add_action('init', function() use ($slug_single, $args)
             {
                 register_taxonomy($slug_single, $this->post_type, $args);
-                register_taxonomy_for_object_type( $slug_single, $this->post_type );
+                foreach($this->post_type as $pt)
+                    register_taxonomy_for_object_type( $slug_single, $pt );
             });
         }
 

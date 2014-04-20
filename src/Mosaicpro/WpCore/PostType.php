@@ -1,13 +1,80 @@
 <?php namespace Mosaicpro\WpCore;
 
+/**
+ * Class PostType
+ * @package Mosaicpro\WpCore
+ */
 class PostType
 {
-    public static function register($prefix = __CLASS__, $type, array $args = [])
+    /**
+     * Holds the PostType name
+     * @var
+     */
+    protected $name;
+
+    /**
+     * Holds the PostType prefix
+     * @var
+     */
+    protected $prefix;
+
+    /**
+     * Holds the PostType options
+     * @var array
+     */
+    protected $args = [];
+
+    /**
+     * Creates a new PostType instance
+     * @param $name
+     * @param $prefix
+     */
+    private function __construct($name, $prefix)
     {
-        if (!is_array($type)) $type = [$type, $type . 's'];
-        $single = isset($type[0]) ? $type[0] : false;
-        $multiple = isset($type[1]) ? $type[1] : false;
-        if (!$single || !$multiple) return false;
+        $this->setName($name);
+        $this->prefix = $prefix;
+        return $this;
+    }
+
+    /**
+     * Creates a new PostType instance statically
+     * @param $name
+     * @param null $prefix
+     * @return static
+     */
+    public static function make($name, $prefix = null)
+    {
+        return new static($name, $prefix);
+    }
+
+    /**
+     * Sets the name of the PostType
+     * @param $name
+     */
+    private function setName($name)
+    {
+        if (!is_array($name)) $name = [$name, $name . 's'];
+        $this->name = $name;
+    }
+
+    /**
+     * Sets the Options of the PostType
+     * @param $args
+     * @return $this
+     */
+    public function setOptions($args)
+    {
+        $this->args = $args;
+        return $this;
+    }
+
+    /**
+     * Registers the PostType with WordPress
+     */
+    public function register()
+    {
+        $single = $this->name[0];
+        $multiple = $this->name[1];
 
         $label_single = ucwords($single);
         $label_multiple = ucwords($multiple);
@@ -32,18 +99,19 @@ class PostType
                 'slug' => $slug_multiple
             ),
             'public' => true,
-            'menu_icon' => admin_url() . 'images/media-button-video.gif',
             'supports' => array(
                 'title',
                 'thumbnail',
                 'excerpt'
             )
         );
-        $args = array_merge($args_default, $args);
+        $args = array_merge($args_default, $this->args);
 
-        add_action('init', function() use ($prefix, $slug_single, $args)
+        add_action('init', function() use ($slug_single, $args)
         {
-            register_post_type($prefix . '_' . $slug_single, $args);
+            $post_type = !empty($this->prefix) ? $this->prefix . '_' . $slug_single : $slug_single;
+            if (post_type_exists($post_type)) return false;
+            register_post_type($post_type, $args);
         });
     }
 }

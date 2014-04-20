@@ -115,13 +115,6 @@ class CRUD
     protected $mixed;
 
     /**
-     * Holds the post types options
-     * Used when CRUD handles the creation of post types
-     * @var array
-     */
-    protected $post_type_options = [];
-
-    /**
      * @return mixed|string
      */
     private function getRelatedId()
@@ -153,7 +146,6 @@ class CRUD
 
         $this->setRelated($related);
         $this->setInstance();
-        $this->setPostTypeOptions('default', ['args' => ['show_in_menu' => $prefix]]);
         return $this;
     }
 
@@ -222,55 +214,6 @@ class CRUD
         $types = $this->getRelatedPostTypes();
         array_unshift($types, $this->prefix . '_' . $this->post);
         return $types;
-    }
-
-    /**
-     * Handle the creation of post types
-     */
-    private function setup_post_types()
-    {
-        $types = $this->getPostTypes();
-        $default_options = $this->getPostTypeOptions();
-
-        foreach($types as $type)
-        {
-            if (post_type_exists($type)) continue;
-
-            $options = $this->getPostTypeOptions($type);
-            $options = array_merge($default_options, $options);
-
-            $type = str_replace($this->prefix . "_", "", $type);
-
-            $name = isset($options['name']) ? $options['name'] : $type;
-            $args = isset($options['args']) ? $options['args'] : [];
-
-            PostType::register($this->prefix, $name, $args);
-        }
-    }
-
-    /**
-     * Get post type options
-     * Returns the 'default' array if post_type was not specified
-     * Used when CRUD handles the creation of post types
-     * @param string $post_type
-     * @return array
-     */
-    public function getPostTypeOptions($post_type = 'default')
-    {
-        return isset($this->post_type_options[$post_type]) ? $this->post_type_options[$post_type] : [];
-    }
-
-    /**
-     * Set the post type options for $post_type
-     * Used when CRUD handles the creation of post types
-     * @param $post_type
-     * @param $args
-     * @return $this
-     */
-    public function setPostTypeOptions($post_type, $args)
-    {
-        $this->post_type_options[$post_type] = array_merge($this->getPostTypeOptions($post_type), $args);
-        return $this;
     }
 
     /**
@@ -465,8 +408,10 @@ class CRUD
             $fields = isset($this->form_fields[$post_type]) ? $this->form_fields[$post_type] : $this->form_fields['default'];
             foreach($fields as $field_id)
             {
-                if (is_callable($field_id)) add_action('crud_' . $this->prefix . '_edit_' . $post_type . '_form_fields', $field_id);
-                else add_action('crud_' . $this->prefix . '_edit_' . $post_type . '_form_fields', [$this, 'getFormField_' . $field_id]);
+                $action = 'crud_' . $this->prefix . '_edit_' . $post_type . '_form_fields';
+                if (has_action($action)) continue;
+                if (is_callable($field_id)) add_action($action, $field_id);
+                else add_action($action, [$this, 'getFormField_' . $field_id]);
             }
         }
     }
@@ -621,7 +566,6 @@ class CRUD
     {
         $this->initFormFields();
         $this->initFormButtons();
-        $this->setup_post_types();
         $this->register_scripts();
         $this->handle_ajax_edit_related();
         $this->handle_ajax_list_related();
@@ -730,8 +674,7 @@ class CRUD
 
                     if ($related_id) $saved = wp_update_post($related_save, true);
                     else {
-                        $post_type_options = $this->getPostTypeOptions($related_item);
-                        $supports = isset($post_type_options['args']['supports']) ? $post_type_options['args']['supports'] : true;
+                        $supports = post_type_supports($related_item, 'title');
                         if (!$supports) PostData::allow_empty();
                         $saved = wp_insert_post($related_save, true);
                     }
@@ -867,7 +810,12 @@ class CRUD
         {
             if (is_numeric($field)) $field = $value;
             $field_label = !is_callable($field) ? ucwords(str_replace("_", " ", $field)) : '';
-            if ($field == 'post_title_permalink')
+            if (is_callable($field))
+            {
+                $callable = $field($related_post);
+                $related_table_row[$callable['field']] = $callable['value'];
+            }
+            elseif ($field == 'post_title_permalink')
             {
                 $related_table_row['Title'] = \Mosaicpro\Core\IoC::getContainer('html')
                         ->link(get_permalink($related_post->ID), $related_post->post_title) .
@@ -899,11 +847,6 @@ class CRUD
                 $field_label = ucwords(str_replace("_", " ", $parts[1]));
                 $field = $parts[1];
                 $related_table_row[$field_label] = $related_post->{$field} == 1 ? '<strong>Yes</strong>' : 'No';
-            }
-            elseif (is_callable($field))
-            {
-                $callable = $field($related_post);
-                $related_table_row[$callable['field']] = $callable['value'];
             }
             elseif (isset($related_post->{$field}))
                 $related_table_row[$field_label] = $related_post->{$field};

@@ -127,7 +127,8 @@ class ThickBox
      */
     private function thickbox()
     {
-        add_thickbox();
+        add_action('admin_enqueue_scripts', 'add_thickbox');
+
         if ($this->type === self::TB_TYPE_IFRAME)
         {
             $this->url .= '?' . build_query($this->url_data);
