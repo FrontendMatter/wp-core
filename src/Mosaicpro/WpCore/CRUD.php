@@ -52,7 +52,7 @@ class CRUD
      * Holds what actions will be displayed in the Related List table
      * @var array
      */
-    protected $list_actions = ['default' => ['edit_related', 'add_to_post']];
+    protected $list_actions = ['default' => ['edit_related', 'remove_related', 'add_to_post']];
 
     /**
      * Holds the post related list actions / buttons
@@ -343,7 +343,7 @@ class CRUD
      */
     public function setForm($related, $callback)
     {
-        add_action('crud_' . $this->prefix . '_edit_' . $related . '_form', $callback);
+        add_action('crud_' . $this->prefix . '_edit_' . $this->post . '_' . $related . '_form', $callback);
         return $this;
     }
 
@@ -352,18 +352,16 @@ class CRUD
      */
     private function initFormButtons()
     {
-        $post_types = $this->getRelatedType();
-        if (!is_array($post_types)) $post_types = [$post_types];
+        $post_types = $this->getRelatedPostTypes();
 
         foreach($post_types as $post_type)
         {
             $buttons = isset($this->form_buttons[$post_type]) ? $this->form_buttons[$post_type] : $this->form_buttons['default'];
             foreach($buttons as $button_id)
             {
-                if (is_callable($button_id))
-                    add_action('crud_' . $this->prefix . '_edit_' . $post_type . '_form_buttons', $button_id);
-                else
-                    add_action('crud_' . $this->prefix . '_edit_' . $post_type . '_form_buttons', [$this, 'getFormButton_' . $button_id]);
+                $action = 'crud_' . $this->prefix . '_edit_' . $this->post . '_' . $post_type . '_form_buttons';
+                if (is_callable($button_id)) add_action($action, $button_id);
+                else add_action($action, [$this, 'getFormButton_' . $button_id]);
             }
         }
     }
@@ -391,9 +389,11 @@ class CRUD
     /**
      * Form Full Edit Button
      * @param $post
+     * @return bool
      */
     public function getFormButton_full_edit($post)
     {
+        if (!isset($post->ID)) return false;
         echo Button::link('Go to full edit page')->addUrl(get_edit_post_link($post->ID))->addAttributes(['target' => '_parent'])->pullRight();
     }
 
@@ -402,14 +402,13 @@ class CRUD
      */
     private function initFormFields()
     {
-        $post_types = $this->getPostTypes();
+        $post_types = $this->getRelatedPostTypes();
         foreach($post_types as $post_type)
         {
             $fields = isset($this->form_fields[$post_type]) ? $this->form_fields[$post_type] : $this->form_fields['default'];
             foreach($fields as $field_id)
             {
-                $action = 'crud_' . $this->prefix . '_edit_' . $post_type . '_form_fields';
-                if (has_action($action)) continue;
+                $action = 'crud_' . $this->prefix . '_edit_' . $this->post . '_' . $post_type . '_form_fields';
                 if (is_callable($field_id)) add_action($action, $field_id);
                 else add_action($action, [$this, 'getFormField_' . $field_id]);
             }
@@ -487,7 +486,6 @@ class CRUD
     private function setComponents($component = '', $post_type, $args)
     {
         $this->{$component}[$post_type] = $args;
-        // $this->{$component}[$post_type] = is_callable($args) ? $args($this) : $args;
         return $this;
     }
 
@@ -568,6 +566,7 @@ class CRUD
         $this->initFormButtons();
         $this->register_scripts();
         $this->handle_ajax_edit_related();
+        $this->handle_ajax_delete_related();
         $this->handle_ajax_list_related();
         $this->handle_ajax_list_post_related();
         $this->handle_ajax_list_post_related_mixed();
@@ -636,7 +635,28 @@ class CRUD
     }
 
     /**
+     * Handle Delete Related AJAX requests
+     * TODO: add security checks (e.g. current_user_can delete the post)
+     */
+    private function handle_ajax_delete_related()
+    {
+        $related_list = $this->getRelatedPostTypes();
+        foreach($related_list as $related_item)
+        {
+            add_action('wp_ajax_' . $this->prefix . '_delete_' . $related_item, function($related_item) use ($related_item)
+            {
+                $related_id = !empty($_REQUEST['related_id']) ? $_REQUEST['related_id'] : false;
+                if (!$related_id) wp_send_json_error( 'Invalid Request' );
+                $trashed = wp_delete_post($related_id);
+                if (!is_a($trashed, 'stdClass')) wp_send_json_error( 'The post was NOT trashed due to an error!' );
+                wp_send_json_success( 'The post was successfully moved to trash!' );
+            });
+        }
+    }
+
+    /**
      * Handle Edit Related AJAX requests
+     * TODO: add security checks (e.g. current_user_can create / edit the post)
      */
     private function handle_ajax_edit_related()
     {
@@ -654,16 +674,15 @@ class CRUD
                     if ( false ) wp_send_json_error( 'Security error' );
                     if ( !$this->formPassesValidation($related_item) ) wp_send_json_error( $this->getFormValidationError() );
 
-                    $related_save = $_POST;
+                    $related_save = [];
+                    if (!$related_id) $related_save = (array) @get_default_post_to_edit($related_item, true);
+                    $related_save = array_merge($related_save, $_POST);
                     $related_save['post_status'] = 'publish';
-                    $related_save['post_type'] = $related_item;
 
                     unset($related_save['nonce']);
                     unset($related_save['action']);
 
-                    if ($related_id) $related_save['ID'] = $related_id;
-                    unset($related_save['related_id']);
-
+                    if ($related_id) unset($related_save['related_id']);
                     if (isset($related_save['meta']))
                     {
                         $save_meta_fields = array_keys($related_save['meta']);
@@ -672,12 +691,7 @@ class CRUD
                         unset($related_save['meta']);
                     }
 
-                    if ($related_id) $saved = wp_update_post($related_save, true);
-                    else {
-                        $supports = post_type_supports($related_item, 'title');
-                        if (!$supports) PostData::allow_empty();
-                        $saved = wp_insert_post($related_save, true);
-                    }
+                    $saved = @wp_update_post($related_save, true);
 
                     if (is_a($saved, 'WP_Error')) wp_send_json_error($saved->get_error_messages());
                     wp_send_json_success();
@@ -700,15 +714,15 @@ class CRUD
                 ThickBox::getHeader();
                 ?>
                 <div class="col-md-12">
-                    <h3>Edit <?php echo $this->getPostTypeLabel($related_item); ?></h3>
+                    <h3><?php echo $related_id ? 'Edit' : 'Add'; ?> <?php echo $this->getPostTypeLabel($related_item); ?></h3>
                 </div>
                 <hr/>
                 <form action="" class="edit-related-form" data-related-instance="<?php echo $this->getInstance(); ?>" method="post">
                     <div class="col-md-12">
                         <?php
-                        do_action('crud_' . $this->prefix . '_edit_' . $related_item . '_form_fields');
-                        do_action('crud_' . $this->prefix . '_edit_' . $related_item . '_form', $related, $this);
-                        do_action('crud_' . $this->prefix . '_edit_' . $related_item . '_form_buttons', $related);
+                        do_action('crud_' . $this->prefix . '_edit_' . $this->post . '_' . $related_item . '_form_fields', $related);
+                        do_action('crud_' . $this->prefix . '_edit_' . $this->post . '_' . $related_item . '_form', $related, $this);
+                        do_action('crud_' . $this->prefix . '_edit_' . $this->post . '_' . $related_item . '_form_buttons', $related);
                         ?>
                     </div>
                 </form>
@@ -925,16 +939,17 @@ class CRUD
         $actions = [];
         foreach($this->{$list_key}[$related_post->post_type] as $action)
         {
+            $related_label = self::getPostTypeLabel($related_post->post_type);
             if ($action == 'edit_related_thickbox')
             {
                 $actions[] = Button::regular('<i class="glyphicon glyphicon-pencil"></i>')
-                    ->addAttributes(['title' => 'Edit ' . self::getPostTypeLabel($related_post->post_type), 'class' => 'thickbox'])
+                    ->addAttributes(['title' => 'Edit ' . $related_label, 'class' => 'thickbox'])
                     ->addUrl(admin_url() . 'admin-ajax.php?action=' . $this->prefix . '_edit_' . $related_post->post_type . '&related_id=' . $related_post->ID . '#TB_iframe?width=600&width=550');
             }
             if ($action == 'edit_related')
             {
                 $actions[] = Button::regular('<i class="glyphicon glyphicon-pencil"></i>')
-                    ->addAttributes(['title' => 'Edit ' . self::getPostTypeLabel($related_post->post_type)])
+                    ->addAttributes(['title' => 'Edit ' . $related_label])
                     ->addUrl(admin_url() . 'admin-ajax.php?action=' . $this->prefix . '_edit_' . $related_post->post_type . '&related_id=' . $related_post->ID . '#TB_iframe?width=600&width=550');
             }
             if ($action == 'add_to_post')
@@ -947,7 +962,18 @@ class CRUD
                         'data-related-title' => $related_post->post_title,
                         'data-related-type' => $related_post->post_type,
                         'data-related-instance' => $this->getInstance(),
-                        'title' => 'Add ' . self::getPostTypeLabel($related_post->post_type) . ' to ' . $this->post
+                        'title' => 'Add ' . $related_label . ' to ' . $this->post
+                    ]);
+            }
+            if ($action == 'remove_related')
+            {
+                $actions[] = Button::danger('<i class="glyphicon glyphicon-trash"></i>')
+                    ->addAttributes([
+                        'title' => 'Move ' . $related_label . ' to Trash AND remove ' . $related_label . ' from ' . $this->post,
+                        'data-toggle' => 'remove-related',
+                        'data-related-id' => $related_post->ID,
+                        'data-related-type' => $related_post->post_type,
+                        'data-related-instance' => $this->getInstance()
                     ]);
             }
             if ($action == 'remove_from_post')

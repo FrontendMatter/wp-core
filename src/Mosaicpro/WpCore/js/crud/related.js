@@ -36,6 +36,31 @@
             });
     }
 
+    window.mp_crud_related.prototype.removeRelated = function(id, type)
+    {
+        var that = this,
+            related_data = this.instance,
+            data = {
+                action: related_data.prefix + '_delete_' + type,
+                related_id: id
+            };
+
+        $.post( ajaxurl, data )
+            .success(function(response)
+            {
+                if (response == -1)
+                    return alert('An error occurred while saving the data');
+
+                if (typeof response.success !== 'undefined')
+                {
+                    if (response.success !== true)
+                        return alert(response.data);
+
+                    that.wp_remove_post_related(id);
+                }
+            });
+    }
+
     window.mp_crud_related.prototype.wp_remove_post_related = function(related_id)
     {
         var related_data = this.instance,
@@ -55,7 +80,12 @@
                     return alert('An error occurred while removing the data');
 
                 if (typeof response.success !== 'undefined')
+                {
+                    if (response.success !== true)
+                        return alert(response.data);
+
                     that.listPostRelated();
+                }
             });
     }
 
@@ -76,7 +106,12 @@
                     return alert('An error occurred while fetching the data');
 
                 if (typeof response.success !== 'undefined')
+                {
+                    if (response.success !== true)
+                        return alert(response.data);
+
                     $(that.list).html(typeof response.data !== 'undefined' ? response.data : '');
+                }
             });
     };
 
