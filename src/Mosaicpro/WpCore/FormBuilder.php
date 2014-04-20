@@ -106,7 +106,7 @@ class FormBuilder
     }
 
     /**
-     * Create a checkbox input field
+     * Echo out a checkbox input field
      * @param $name
      * @param $label
      * @param $value
@@ -114,22 +114,43 @@ class FormBuilder
      */
     private function checkbox($name, $label, $value, $checked = null)
     {
+        echo $this->get_checkbox($name, $label, $value, $checked);
+    }
+
+    /**
+     * Create a checkbox input field
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param null $checked
+     * @return string
+     */
+    public function get_checkbox($name, $label, $value, $checked = null)
+    {
         if (empty($value))
         {
             if (is_null($checked)) $checked = [];
             $value = 1;
         }
-        ?>
-        <div class="checkbox">
-            <label>
-                <?php
-                if ($checked) $checked = ['checked'];
-                if (is_null($checked)) $checked = $value ? ['checked'] : [];
-                echo self::$form->checkbox($name, $value, null, $checked) . $label;
-                ?>
-            </label>
-        </div>
-        <?php
+        $output = [];
+        $output[] = '<div class="checkbox"><label>';
+        if ($checked) $checked = ['checked'];
+        if (is_null($checked)) $checked = $value ? ['checked'] : [];
+        $output[] = self::$form->checkbox($name, $value, null, $checked) . $label;
+        $output[] = '</label></div>';
+        return implode(PHP_EOL, $output);
+    }
+
+    /**
+     * Echo out a checkbox input field group
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param $values
+     */
+    private function checkbox_multiple($name, $label, $value, $values)
+    {
+        echo $this->get_checkbox_multiple($name, $label, $value, $values);
     }
 
     /**
@@ -138,16 +159,30 @@ class FormBuilder
      * @param $label
      * @param $value
      * @param $values
+     * @return string
      */
-    private function checkbox_multiple($name, $label, $value, $values)
+    public function get_checkbox_multiple($name, $label, $value, $values)
     {
-        ?>
-        <strong><?php echo $label; ?></strong>
-        <?php
+        $output = [];
+        $output[] = '<strong>' . $label . '</strong>';
         foreach($values as $value_id => $value_label) {
             $checked = is_array($value) && in_array( (string) $value_id, $value );
-            echo $this->checkbox($name, $value_label, $value_id, $checked);
+            $output[] = $this->get_checkbox($name, $value_label, $value_id, $checked);
         }
+        return implode(PHP_EOL, $output);
+    }
+
+    /**
+     * Echo out a select dropdown
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param $values
+     * @param array $attributes
+     */
+    private function select($name, $label, $value, $values, array $attributes = [])
+    {
+        echo $this->get_select($name, $label, $value, $values, $attributes);
     }
 
     /**
@@ -157,16 +192,28 @@ class FormBuilder
      * @param $value
      * @param $values
      * @param array $attributes
+     * @return string
      */
-    private function select($name, $label, $value, $values, array $attributes = [])
+    public function get_select($name, $label, $value, $values, array $attributes = [])
     {
+        $output = [];
         $attributes = array_merge(['class' => 'form-control'], $attributes);
-        ?>
-        <div class="form-group">
-            <label for="<?php echo $name; ?>"><?php echo $label; ?>:</label>
-            <?php echo self::$form->select($name, $values, $value, $attributes); ?>
-        </div>
-        <?php
+        $output[] = '<div class="form-group"><label for="' . $name . '">' . $label . ':</label>';
+        $output[] = self::$form->select($name, $values, $value, $attributes);
+        $output[] = '</div>';
+        return implode(PHP_EOL, $output);
+    }
+
+    /**
+     * Echo out a multi-select field
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param $values
+     */
+    private function select_multiple($name, $label, $value, $values)
+    {
+        echo $this->get_select_multiple($name, $label, $value, $values);
     }
 
     /**
@@ -175,10 +222,22 @@ class FormBuilder
      * @param $label
      * @param $value
      * @param $values
+     * @return string
      */
-    private function select_multiple($name, $label, $value, $values)
+    public function get_select_multiple($name, $label, $value, $values)
     {
-        return $this->select($name, $label, $value, $values, ['multiple' => 'multiple']);
+        return $this->get_select($name, $label, $value, $values, ['multiple' => 'multiple']);
+    }
+
+    /**
+     * Echo out a textarea field
+     * @param $name
+     * @param $label
+     * @param $value
+     */
+    private function textarea($name, $label, $value)
+    {
+        echo $this->get_textarea($name, $label, $value);
     }
 
     /**
@@ -186,15 +245,26 @@ class FormBuilder
      * @param $name
      * @param $label
      * @param $value
+     * @return string
      */
-    private function textarea($name, $label, $value)
+    public function get_textarea($name, $label, $value)
     {
-        ?>
-        <div class="form-group">
-            <label for="<?php echo $name; ?>"><?php echo $label; ?>:</label>
-            <?php echo self::$form->textarea($name, $value, ['class' => 'form-control']); ?>
-        </div>
-        <?php
+        $output = [];
+        $output[] = '<div class="form-group"><label for="' . $name . '">' . $label . ':</label>';
+        $output[] = self::$form->textarea($name, $value, ['class' => 'form-control']);
+        $output[] = '</div>';
+        return implode(PHP_EOL, $output);
+    }
+
+    /**
+     * Echo out a text input field
+     * @param $name
+     * @param $label
+     * @param $value
+     */
+    private function input($name, $label, $value)
+    {
+        echo $this->get_input($name, $label, $value);
     }
 
     /**
@@ -202,15 +272,26 @@ class FormBuilder
      * @param $name
      * @param $label
      * @param $value
+     * @return string
      */
-    private function input($name, $label, $value)
+    public function get_input($name, $label, $value)
     {
-        ?>
-        <div class="form-group">
-            <label for="<?php echo $name; ?>"><?php echo $label; ?>:</label>
-            <?php echo self::$form->input('text', $name, $value, ['class' => 'form-control']); ?>
-        </div>
-        <?php
+        $output = [];
+        $output[] = '<div class="form-group"><label for="' . $name . '">' . $label . ':</label>';
+        $output[] = self::$form->input('text', $name, $value, ['class' => 'form-control']);
+        $output[] = '</div>';
+        return implode(PHP_EOL, $output);
+    }
+
+    /**
+     * Echo out a group of select fields for editing hh:mm:ss format
+     * @param $name
+     * @param $label
+     * @param $value
+     */
+    private function select_hhmmss($name, $label, $value)
+    {
+        echo $this->get_select_hhmmss($name, $label, $value);
     }
 
     /**
@@ -218,28 +299,28 @@ class FormBuilder
      * @param $name
      * @param $label
      * @param $value
+     * @return string
      */
-    private function select_hhmmss($name, $label, $value)
+    public function get_select_hhmmss($name, $label, $value)
     {
+        $output = [];
         $select = [ 'hh' => [00,23], 'mm' => [0,59], 'ss' => [0,59] ];
-        ?>
-        <div class="form-group">
-            <label for="<?php echo $name; ?>"><?php echo $label; ?>:</label><br/>
-            <?php
-            foreach ($select as $select_name => $range)
+        $output[] = '<div class="form-group"><label for="' . $name . '">' . $label . ':</label><br/>';
+
+        foreach ($select as $select_name => $range)
+        {
+            $range = range($range[0], $range[1]);
+            $values = [];
+            foreach($range as $r)
             {
-                $range = range($range[0], $range[1]);
-                $values = [];
-                foreach($range as $r)
-                {
-                    $fr = sprintf("%02d", $r);
-                    $values[$fr] = $fr;
-                }
-                echo self::$form->select($name . "[" . $select_name . "]", $values, $value[$select_name]) . PHP_EOL;
+                $fr = sprintf("%02d", $r);
+                $values[$fr] = $fr;
             }
-            ?>
-        </div>
-        <?php
+            $output[] = self::$form->select($name . "[" . $select_name . "]", $values, $value[$select_name]) . PHP_EOL;
+        }
+
+        $output[] = '</div>';
+        return implode(PHP_EOL, $output);
     }
 
     /**
