@@ -157,6 +157,12 @@ class MetaBox
                 if (is_numeric($display))
                     $display = $args;
 
+                if (is_callable($display))
+                {
+                    $display($post);
+                    continue;
+                }
+
                 if (in_array($display, $components, true))
                 {
                     if ($display == 'fields')
