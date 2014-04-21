@@ -19,10 +19,10 @@
             that = this;
 
         var data = {
-            action: related_data.prefix + '_add_' + related_data.post + '_' + that.getRelatedId(),
+            action: related_data.prefix + '_add_' + related_data.post + '_' + related.type,
             nonce: related_data.nonce,
             post_id: related_data.post_id,
-            related: related
+            related_id: related.id
         };
 
         $.post( ajaxurl, data )
@@ -56,18 +56,18 @@
                     if (response.success !== true)
                         return alert(response.data);
 
-                    that.wp_remove_post_related(id);
+                    that.wp_remove_post_related(id, type);
                 }
             });
     }
 
-    window.mp_crud_related.prototype.wp_remove_post_related = function(related_id)
+    window.mp_crud_related.prototype.wp_remove_post_related = function(related_id, type)
     {
         var related_data = this.instance,
             that = this;
 
         var data = {
-            action: related_data.prefix + '_remove_' + related_data.post + '_' + that.getRelatedId(),
+            action: related_data.prefix + '_remove_' + related_data.post + '_' + type,
             nonce: related_data.nonce,
             post_id: related_data.post_id,
             related_id: related_id
@@ -94,9 +94,10 @@
         var that = this;
         var related_data = this.instance;
         var data = {
-            action: related_data.prefix + '_list_' + related_data.post + '_' + that.getRelatedId(),
+            action: related_data.instance_ID + '_list_related',
             nonce: related_data.nonce,
-            post_id: related_data.post_id
+            post_id: related_data.post_id,
+            related_types: related_data.related_types
         };
 
         $.post( ajaxurl, data )
@@ -117,7 +118,7 @@
 
     $(function()
     {
-        var found_crud_instances = $.map(window, function(e,i){ if (i.match(/crud_related_instance/)) return i; });
+        var found_crud_instances = $.map(window, function(e,i){ if (i.match(/crud_id_/)) return i; });
         $.each(found_crud_instances, function(k,instance){
             window.crud_instances[instance] = new window.mp_crud_related(window[instance]);
             window.crud_instances[instance].listPostRelated();
@@ -127,9 +128,10 @@
         {
             e.preventDefault();
             var id = $(this).data('relatedId'),
+                type = $(this).data('relatedType'),
                 instance = $(this).data('relatedInstance');
 
-            window.crud_instances[instance].wp_remove_post_related(id);
+            window.crud_instances[instance].wp_remove_post_related(id, type);
         });
     });
 

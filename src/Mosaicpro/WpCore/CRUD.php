@@ -106,7 +106,7 @@ class CRUD
      * Holds the CRUD instance ID
      * @var string
      */
-    protected $instance;
+    protected $instance_ID;
 
     /**
      * Holds whether CRUD is mixed / contains multiple related post types
@@ -145,17 +145,16 @@ class CRUD
         $this->mixed = is_array($related);
 
         $this->setRelated($related);
-        $this->setInstance();
+        $this->setInstanceID();
         return $this;
     }
 
     /**
      * Set the instance identifier
      */
-    private function setInstance()
+    private function setInstanceID()
     {
-        if ($this->mixed) $this->instance = 'crud_related_instance_mixed_' . $this->getRelatedId();
-        else $this->instance = 'crud_related_instance_' . $this->getRelated();
+        $this->instance_ID = 'crud_id_' . $this->post . '_' . $this->getRelatedId();
     }
 
     /**
@@ -240,12 +239,12 @@ class CRUD
     }
 
     /**
-     * Returns the stored instance
+     * Returns the stored instance ID
      * @return mixed
      */
-    public function getInstance()
+    public function getInstanceID()
     {
-        return $this->instance;
+        return $this->instance_ID;
     }
 
     /**
@@ -255,17 +254,6 @@ class CRUD
     public function getRelated()
     {
         return $this->related;
-    }
-
-    /**
-     * Get an array of all registered Related short names (without prefix)
-     * @return array|mixed
-     */
-    private function getRelatedList()
-    {
-        $related_list = [$this->getRelated()];
-        if ($this->mixed) $related_list = $this->getRelated();
-        return $related_list;
     }
 
     /**
@@ -569,7 +557,6 @@ class CRUD
         $this->handle_ajax_delete_related();
         $this->handle_ajax_list_related();
         $this->handle_ajax_list_post_related();
-        $this->handle_ajax_list_post_related_mixed();
         $this->handle_ajax_add_post_related();
         $this->handle_ajax_remove_post_related();
         return $this;
@@ -590,13 +577,15 @@ class CRUD
                 wp_enqueue_script($script_id, plugin_dir_url(__FILE__) . 'js/crud/related.js', ['jquery'], '1.0', true);
                 wp_localize_script(
                     $script_id,
-                    $this->getInstance(),
+                    $this->getInstanceID(),
                     array(
+                        'instance_ID' => $this->getInstanceID(),
                         'nonce' => wp_create_nonce( $this->prefix . "_" . $this->post . "_nonce" ),
                         'post_id' => $post->ID,
                         'prefix' => $this->prefix,
                         'post' => $this->post,
                         'related' => $this->related,
+                        'related_types' => $this->getRelatedPostTypes()
                     )
                 );
             }
@@ -608,16 +597,17 @@ class CRUD
      */
     private function handle_ajax_list_related()
     {
-        $related_list = $this->getRelatedList();
-        foreach($related_list as $related)
+        $post_types = $this->getRelatedPostTypes();
+        foreach($post_types as $post_type)
         {
-            add_action('wp_ajax_' . $this->prefix . '_list_' . $related, function($related) use ($related)
+            $action = 'wp_ajax_list_' . $this->post . '_' . $post_type;
+            add_action($action, function() use ($post_type)
             {
-                wp_enqueue_script('ajax_list_' . $related, plugin_dir_url(__FILE__) . 'js/crud/ajax_list.js', ['jquery'], '1.0', true);
+                wp_enqueue_script('ajax_list_' . $post_type, plugin_dir_url(__FILE__) . 'js/crud/ajax_list.js', ['jquery'], '1.0', true);
                 ThickBox::getHeader();
 
                 $related_posts_query = [
-                    'post_type' => $this->getRelatedType($related),
+                    'post_type' => $post_type,
                     'numberposts' => -1
                 ];
                 $related_posts_query = array_merge($related_posts_query, $this->list_query);
@@ -626,7 +616,7 @@ class CRUD
                 if (count($related_posts) > 0)
                     echo $this->get_list_format($this->list_related_format, $related_posts);
                 else
-                    echo Alert::make()->addAlert('No related posts found (' . $this->getRelatedType($related) . ').')->isInfo();
+                    echo Alert::make()->addAlert('No related posts found (' . $post_type . ').')->isInfo();
 
                 ThickBox::getFooter();
                 die();
@@ -663,7 +653,8 @@ class CRUD
         $related_list = $this->getRelatedPostTypes();
         foreach($related_list as $related_item)
         {
-            add_action('wp_ajax_' . $this->prefix . '_edit_' . $related_item, function($related_item) use ($related_item)
+            $action = 'wp_ajax_edit_' . $this->post . '_' . $related_item;
+            add_action($action, function() use ($action, $related_item)
             {
                 $related_id = !empty($_REQUEST['related_id']) ? $_REQUEST['related_id'] : false;
                 $is_post = !empty($_POST);
@@ -682,7 +673,11 @@ class CRUD
                     unset($related_save['nonce']);
                     unset($related_save['action']);
 
-                    if ($related_id) unset($related_save['related_id']);
+                    if ($related_id) {
+                        $related_save['ID'] = $related_id;
+                        unset($related_save['related_id']);
+                    }
+
                     if (isset($related_save['meta']))
                     {
                         $save_meta_fields = array_keys($related_save['meta']);
@@ -706,7 +701,7 @@ class CRUD
                     'related_data',
                     array(
                         'nonce' => wp_create_nonce( $this->prefix . "_" . $related_item . "_nonce" ),
-                        'action' => $this->prefix . '_edit_' . $related_item,
+                        'action' => 'edit_' . $this->post . '_' . $related_item,
                         'related_id' => $related_id
                     )
                 );
@@ -717,7 +712,7 @@ class CRUD
                     <h3><?php echo $related_id ? 'Edit' : 'Add'; ?> <?php echo $this->getPostTypeLabel($related_item); ?></h3>
                 </div>
                 <hr/>
-                <form action="" class="edit-related-form" data-related-instance="<?php echo $this->getInstance(); ?>" method="post">
+                <form action="" class="edit-related-form" data-related-instance="<?php echo $this->getInstanceID(); ?>" method="post">
                     <div class="col-md-12">
                         <?php
                         do_action('crud_' . $this->prefix . '_edit_' . $this->post . '_' . $related_item . '_form_fields', $related);
@@ -738,59 +733,28 @@ class CRUD
      */
     private function handle_ajax_list_post_related()
     {
-        if (is_array($this->getRelated())) return false;
-        add_action('wp_ajax_' . $this->prefix . '_list_' . $this->post . '_' . $this->getRelated(), function()
+        $action = 'wp_ajax_' . $this->getInstanceID() . '_list_related';
+        add_action($action, function()
         {
             check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
             if ( false ) wp_send_json_error( 'Security error' );
 
             $post_id = $_POST['post_id'];
-            $related_key = $this->prefix . '_' . $this->getRelated();
+            $related_types = $_POST['related_types'];
 
-            $list = get_post_meta($post_id, $related_key, true);
-            if (!is_array($list) || empty($list)) $list = [];
+            $list = [];
+            foreach ($related_types as $related_type)
+            {
+                $values = get_post_custom_values($related_type, $post_id);
+                if (!is_null($values)) $list = array_merge($list, $values);
+            }
 
-            $list_ids = [];
-            foreach($list as $list_item) $list_ids[] = $list_item['id'];
-            if (empty($list_ids)) return wp_send_json_success();
-
-            $related_posts = get_posts([
-                'post_type' => $this->getRelatedType(),
-                'numberposts' => -1,
-                'post__in' => $list_ids
-            ]);
-
-            $list_format = $this->get_list_format($this->list_post_related_format, $related_posts, 'post_related_');
-            wp_send_json_success( $list_format );
-        });
-    }
-
-    /**
-     * Handle List Post Related Mixed AJAX requests
-     */
-    private function handle_ajax_list_post_related_mixed()
-    {
-        if (!is_array($this->getRelated())) return false;
-        add_action('wp_ajax_' . $this->prefix . '_list_' . $this->post . '_' . $this->getRelatedId(), function()
-        {
-            check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
-            if ( false ) wp_send_json_error( 'Security error' );
-
-            $post_id = $_POST['post_id'];
-            $related_key = $this->prefix . '_mixed';
-
-            $list = get_post_meta($post_id, $related_key, true);
-            if (!is_array($list) || empty($list)) $list = [];
-
-            $list_ids = [];
-            foreach($list as $list_item) $list_ids[] = $list_item['id'];
-            $list_ids = array_unique($list_ids);
-            if (empty($list_ids)) return wp_send_json_success();
+            if (empty($list)) return wp_send_json_success();
 
             $related_posts = get_posts([
-                'post_type' => $this->getRelatedType(),
+                'post_type' => $related_types,
                 'numberposts' => -1,
-                'post__in' => $list_ids
+                'post__in' => $list
             ]);
 
             $list_format = $this->get_list_format($this->list_post_related_format, $related_posts, 'post_related_');
@@ -907,7 +871,6 @@ class CRUD
     private function get_list_format_table($related_posts, $prefix = '')
     {
         $related_table = [];
-        $related_table_row_columns = [];
         foreach ($related_posts as $related_post)
         {
             $row = $this->get_list_format_row($related_post, $this->{$prefix . 'list_fields'}[$related_post->post_type]);
@@ -944,13 +907,13 @@ class CRUD
             {
                 $actions[] = Button::regular('<i class="glyphicon glyphicon-pencil"></i>')
                     ->addAttributes(['title' => 'Edit ' . $related_label, 'class' => 'thickbox'])
-                    ->addUrl(admin_url() . 'admin-ajax.php?action=' . $this->prefix . '_edit_' . $related_post->post_type . '&related_id=' . $related_post->ID . '#TB_iframe?width=600&width=550');
+                    ->addUrl(admin_url() . 'admin-ajax.php?action=edit_' . $this->post . '_' . $related_post->post_type . '&related_id=' . $related_post->ID . '#TB_iframe?width=600&width=550');
             }
             if ($action == 'edit_related')
             {
                 $actions[] = Button::regular('<i class="glyphicon glyphicon-pencil"></i>')
                     ->addAttributes(['title' => 'Edit ' . $related_label])
-                    ->addUrl(admin_url() . 'admin-ajax.php?action=' . $this->prefix . '_edit_' . $related_post->post_type . '&related_id=' . $related_post->ID . '#TB_iframe?width=600&width=550');
+                    ->addUrl(admin_url() . 'admin-ajax.php?action=edit_' . $this->post . '_' . $related_post->post_type . '&related_id=' . $related_post->ID . '#TB_iframe?width=600&width=550');
             }
             if ($action == 'add_to_post')
             {
@@ -959,9 +922,8 @@ class CRUD
                     ->addAttributes([
                         'data-toggle' => 'add-to-post',
                         'data-related-id' => $related_post->ID,
-                        'data-related-title' => $related_post->post_title,
                         'data-related-type' => $related_post->post_type,
-                        'data-related-instance' => $this->getInstance(),
+                        'data-related-instance' => $this->getInstanceID(),
                         'title' => 'Add ' . $related_label . ' to ' . $this->post
                     ]);
             }
@@ -973,17 +935,18 @@ class CRUD
                         'data-toggle' => 'remove-related',
                         'data-related-id' => $related_post->ID,
                         'data-related-type' => $related_post->post_type,
-                        'data-related-instance' => $this->getInstance()
+                        'data-related-instance' => $this->getInstanceID()
                     ]);
             }
             if ($action == 'remove_from_post')
             {
-                $actions[] = Button::danger('<i class="glyphicon glyphicon-trash"></i>')
+                $actions[] = Button::danger('<i class="glyphicon glyphicon-minus"></i>')
                     ->addAttributes([
-                        'title' => 'Remove ' . self::getPostTypeLabel($related_post->post_type) . ' from ' . $this->post,
+                        'title' => 'Remove ' . $related_label . ' from ' . $this->post,
                         'data-toggle' => 'remove-from-post',
                         'data-related-id' => $related_post->ID,
-                        'data-related-instance' => $this->getInstance()
+                        'data-related-type' => $related_post->post_type,
+                        'data-related-instance' => $this->getInstanceID()
                     ]);
             }
             if (is_callable($action))
@@ -997,23 +960,21 @@ class CRUD
      */
     private function handle_ajax_add_post_related()
     {
-        add_action('wp_ajax_' . $this->prefix . '_add_' . $this->post . '_' . $this->getRelatedId(), function()
+        $post_types = $this->getRelatedPostTypes();
+        foreach ($post_types as $post_type)
         {
-            check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
-            if ( false ) wp_send_json_error( 'Security error' );
+            add_action('wp_ajax_' . $this->prefix . '_add_' . $this->post . '_' . $post_type, function() use ($post_type)
+            {
+                check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
+                if ( false ) wp_send_json_error( 'Security error' );
 
-            $post_id = $_POST['post_id'];
-            $related = $_POST['related'];
-            $related_key = $this->prefix . '_' . (is_array($this->getRelated()) ? 'mixed' : $this->getRelatedId());
+                $post_id = $_POST['post_id'];
+                $related_id = $_POST['related_id'];
+                add_post_meta($post_id, $post_type, $related_id);
 
-            $list = get_post_meta($post_id, $related_key, true);
-            if (!is_array($list)) $list = [];
-
-            $list = array_add($list, $related['id'], $related);
-            update_post_meta($post_id, $related_key, $list);
-
-            wp_send_json_success( $list );
-        });
+                wp_send_json_success();
+            });
+        }
     }
 
     /**
@@ -1021,23 +982,21 @@ class CRUD
      */
     private function handle_ajax_remove_post_related()
     {
-        add_action('wp_ajax_' . $this->prefix . '_remove_' . $this->post . '_' . $this->getRelatedId(), function()
+        $post_types = $this->getRelatedPostTypes();
+        foreach ($post_types as $post_type)
         {
-            check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
-            if ( false ) wp_send_json_error( 'Security error' );
+            add_action('wp_ajax_' . $this->prefix . '_remove_' . $this->post . '_' . $post_type, function() use ($post_type)
+            {
+                check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
+                if ( false ) wp_send_json_error( 'Security error' );
 
-            $post_id = $_POST['post_id'];
-            $related_id = $_POST['related_id'];
-            $related_key = $this->prefix . '_' . (is_array($this->getRelated()) ? 'mixed' : $this->getRelatedId());
+                $post_id = $_POST['post_id'];
+                $related_id = $_POST['related_id'];
+                delete_post_meta($post_id, $post_type, $related_id);
 
-            $list = get_post_meta($post_id, $related_key, true);
-            if (!is_array($list)) $list = [];
-
-            $list = array_except($list, [$related_id]);
-            update_post_meta($post_id, $related_key, $list);
-
-            wp_send_json_success( $list );
-        });
+                wp_send_json_success();
+            });
+        }
     }
 
     /**
@@ -1050,5 +1009,28 @@ class CRUD
     public static function make($prefix, $post, $related)
     {
         return new static($prefix, $post, $related);
+    }
+
+    /**
+     * Find all posts of $connected_type post type that are connected with $post
+     * @param $post
+     * @param $connected_type
+     * @return array
+     */
+    public static function find_connected_with_post($post, $connected_type)
+    {
+        $args = [
+            'post_type' => $connected_type,
+            'meta_query' => [
+                [
+                    'key' => $post->post_type,
+                    'value' => $post->ID,
+                    'compare' => '='
+                ]
+            ]
+        ];
+
+        $posts = get_posts( $args );
+        return $posts;
     }
 } 

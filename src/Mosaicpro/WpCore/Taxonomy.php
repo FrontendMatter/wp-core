@@ -247,4 +247,17 @@ class Taxonomy
             }
         });
     }
+
+    /**
+     * Get a single $taxonomy term for the $post_id
+     * @param $post_id
+     * @param $taxonomy
+     * @return bool|mixed
+     */
+    public static function get_term($post_id, $taxonomy)
+    {
+        $postterms = get_the_terms( $post_id, $taxonomy );
+        $current = ($postterms ? array_pop($postterms) : false);
+        return $current;
+    }
 }

@@ -42,10 +42,11 @@ class FormBuilder
      * @param $label
      * @param $value
      * @param null $checked
+     * @param array $attributes
      */
-    private function radio_single($name, $label, $value, $checked = null)
+    private function radio_single($name, $label, $value, $checked = null, array $attributes = [])
     {
-        echo $this->get_radio_single($name, $label, $value, $checked);
+        echo $this->get_radio_single($name, $label, $value, $checked, $attributes);
     }
 
     /**
@@ -54,22 +55,22 @@ class FormBuilder
      * @param $label
      * @param $value
      * @param null $checked
+     * @param array $attributes
      * @return string
      */
-    public function get_radio_single($name, $label, $value, $checked = null)
+    public function get_radio_single($name, $label, $value, $checked = null, array $attributes = [])
     {
         $output = [];
-        $output[] = '
-        <div class="radio">
-            <label>';
+        $output[] = '<div class="radio"><label>';
 
         if ($checked) $checked = ['checked'];
         if (is_null($checked)) $checked = $value ? ['checked'] : [];
-        $output[] = self::$form->radio($name, $value, null, $checked) . $label;
+        if (!$checked) $checked = [];
 
-        $output[] = '
-            </label>
-        </div>';
+        $attributes = array_merge($checked, $attributes);
+        $output[] = self::$form->radio($name, $value, null, $attributes) . $label;
+
+        $output[] = '</label></div>';
 
         return implode(PHP_EOL, $output);
     }
@@ -80,10 +81,11 @@ class FormBuilder
      * @param $label
      * @param $value
      * @param $values
+     * @param array $attributes
      */
-    private function radio($name, $label, $value, $values)
+    private function radio($name, $label, $value, $values, array $attributes = [])
     {
-        echo $this->get_radio($name, $label, $value, $values);
+        echo $this->get_radio($name, $label, $value, $values, $attributes);
     }
 
     /**
@@ -92,15 +94,16 @@ class FormBuilder
      * @param $label
      * @param $value
      * @param $values
+     * @param array $attributes
      * @return string
      */
-    public function get_radio($name, $label, $value, $values)
+    public function get_radio($name, $label, $value, $values, array $attributes = [])
     {
         $output = [];
         $output[] = '<strong>' . $label . '</strong>';
         foreach($values as $value_id => $value_label) {
             $checked = (string) $value_id == (string) $value;
-            $output[] = $this->get_radio_single($name, $value_label, $value_id, $checked);
+            $output[] = $this->get_radio_single($name, $value_label, $value_id, $checked, $attributes);
         }
         return implode(PHP_EOL, $output);
     }
