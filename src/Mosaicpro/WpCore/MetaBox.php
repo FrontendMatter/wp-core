@@ -66,6 +66,7 @@ class MetaBox
      * ->setField('radio_array', 'Select one value in the array', ['Option 1', 'Option 2', 'Option 3'], 'radio')
      * ->setField('checkbox_multiple[]', 'Check multiple answers', 'mp_lms_quiz_answer', 'checkbox_multiple')
      * ->setField('select_multiple[]', 'Select multiple answers', 'mp_lms_quiz_answer', 'select_multiple')
+     * TODO: adding a callable closure field breaks the rest of the fields
      * @return $this
      */
     public function setField()

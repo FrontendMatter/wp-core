@@ -9,10 +9,22 @@ use Mosaicpro\Core\IoC;
 class PluginGeneric
 {
     /**
+     * Holds a PluginGeneric instance
+     * @var
+     */
+    protected static $instance;
+
+    /**
      * Holds the plugin prefix
      * @var
      */
     protected $prefix;
+
+    /**
+     * Holds the i18n text domain
+     * @var
+     */
+    protected $text_domain;
 
     /**
      * Holds a Mosaicpro\WpCore\Plugin instance
@@ -27,6 +39,17 @@ class PluginGeneric
     {
         $this->plugin = IoC::getContainer('plugin');
         $this->prefix = $this->plugin->getPrefix();
+        $this->text_domain = $this->plugin->getTextDomain();
+    }
+
+    /**
+     * Get a PluginGeneric instance
+     * @return static
+     */
+    public static function getInstance()
+    {
+        self::$instance = new static();
+        return self::$instance;
     }
 
     /**
@@ -57,8 +80,38 @@ class PluginGeneric
     }
 
     /**
+     * Set the i18n text domain
+     * @param null $text_domain
+     */
+    public function setTextDomain($text_domain = null)
+    {
+        if (is_null($text_domain)) $text_domain = str_replace("_", "-", $this->getPrefix());
+        $this->text_domain = $text_domain;
+    }
+
+    /**
+     * Get the i18n text domain
+     * @return mixed
+     */
+    public function getTextDomain()
+    {
+        return $this->text_domain;
+    }
+
+    /**
      * Method called automatically on plugin activation
      * @return bool
      */
     public static function activate() { return false; }
+
+    /**
+     * i18n
+     * Extend WP __() to automatically include the text domain
+     * @param $text
+     * @return string|void
+     */
+    public function __($text)
+    {
+        return __($text, $this->getTextDomain());
+    }
 } 
