@@ -626,7 +626,7 @@ class CRUD
 
     /**
      * Handle Delete Related AJAX requests
-     * TODO: add security checks (e.g. current_user_can delete the post)
+     * @todo add security checks (e.g. current_user_can delete the post)
      */
     private function handle_ajax_delete_related()
     {
@@ -646,7 +646,7 @@ class CRUD
 
     /**
      * Handle Edit Related AJAX requests
-     * TODO: add security checks (e.g. current_user_can create / edit the post)
+     * @todo add security checks (e.g. current_user_can create / edit the post)
      */
     private function handle_ajax_edit_related()
     {

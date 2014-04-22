@@ -33,6 +33,12 @@ class PluginGeneric
     protected $plugin;
 
     /**
+     * Holds the main plugin file path
+     * @var
+     */
+    protected $plugin_file;
+
+    /**
      * Creates a new PluginGeneric instance
      */
     public function __construct()
@@ -76,7 +82,36 @@ class PluginGeneric
      */
     public function setPrefix($prefix)
     {
+        $prefix = str_replace("-", "_", $prefix);
         $this->prefix = $prefix;
+    }
+
+    /**
+     * Set the main plugin file path
+     * @param $file
+     */
+    public function setPluginFile($file)
+    {
+        $this->plugin_file = $file;
+    }
+
+    /**
+     * Get the main plugin file path
+     * @return mixed
+     */
+    public function getPluginFile()
+    {
+        return $this->plugin_file;
+    }
+
+    /**
+     * Get the plugin name from the main plugin file path
+     * @param $plugin_file
+     * @return string
+     */
+    public function getPluginName($plugin_file)
+    {
+        return plugin_basename( dirname($plugin_file) );
     }
 
     /**
@@ -87,6 +122,22 @@ class PluginGeneric
     {
         if (is_null($text_domain)) $text_domain = str_replace("_", "-", $this->getPrefix());
         $this->text_domain = $text_domain;
+    }
+
+    /**
+     * Grab the translations for the plugin
+     * This method should be called only once from the main plugin component
+     */
+    public function loadTextDomain()
+    {
+        add_action( 'init', function()
+        {
+            $domain = $this->getTextDomain();
+            $locale = apply_filters( 'plugin_locale', get_locale(), $domain );
+
+            load_textdomain( $domain, trailingslashit( WP_LANG_DIR ) . $domain . '/' . $domain . '-' . $locale . '.mo' );
+            load_plugin_textdomain( $domain, FALSE, plugin_basename( dirname( $this->plugin->getPluginFile() ) ) . '/languages/' );
+        });
     }
 
     /**

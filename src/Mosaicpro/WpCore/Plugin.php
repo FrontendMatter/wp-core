@@ -8,12 +8,13 @@ class Plugin extends PluginGeneric
 {
     /**
      * Create a new Plugin instance
-     * @param $prefix
-     * @param null $text_domain
+     * @param $plugin_file
      */
-    public function __construct($prefix, $text_domain = null)
+    public function __construct($plugin_file)
     {
+        $prefix = $this->getPluginName( $plugin_file );
         $this->setPrefix($prefix);
-        $this->setTextDomain($text_domain);
+        $this->setPluginFile($plugin_file);
+        $this->setTextDomain($prefix);
     }
 }
