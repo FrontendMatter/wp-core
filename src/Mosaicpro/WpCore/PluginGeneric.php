@@ -27,6 +27,12 @@ class PluginGeneric
     protected $text_domain;
 
     /**
+     * Holds plugin page templates
+     * @var array
+     */
+    protected $page_templates = [];
+
+    /**
      * Holds a Mosaicpro\WpCore\Plugin instance
      * @var mixed
      */
@@ -147,6 +153,39 @@ class PluginGeneric
     public function getTextDomain()
     {
         return $this->text_domain;
+    }
+
+    /**
+     * Set the Plugin's page templates
+     * Only required when allowing the selection of templates
+     * from the page/post edit screen in WP Admin
+     * @param array $templates
+     */
+    public function setPageTemplates(array $templates)
+    {
+        $this->page_templates = $templates;
+    }
+
+    /**
+     * Get the current theme page templates
+     * @return array
+     */
+    public function getPageTemplates()
+    {
+        // adding support for theme templates to be merged and shown in dropdown
+        $templates = wp_get_theme()->get_page_templates();
+        $templates = array_merge( $templates, $this->page_templates );
+
+        return $templates;
+    }
+
+    /**
+     * Get the current theme directory
+     * @return string
+     */
+    public function getThemeDirectory()
+    {
+        return get_theme_root() . '/' . get_template() . '/';
     }
 
     /**

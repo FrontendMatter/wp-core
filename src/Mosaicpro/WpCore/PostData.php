@@ -39,6 +39,26 @@ class PostData
     }
 
     /**
+     * Adds save_post action for saving the selected custom page templates
+     * on the post edit screen in WP Admin;
+     * @param $post_type
+     */
+    public static function save_page_template($post_type)
+    {
+        add_action('save_post', function($post_id) use ($post_type)
+        {
+            if ( $post_type !== $_POST['post_type'] ) return;
+
+            # Skip the auto saves
+            if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+            elseif ( defined( 'DOING_AJAX' ) && DOING_AJAX ) return;
+            elseif ( defined( 'DOING_CRON' ) && DOING_CRON ) return;
+
+            update_post_meta($post_id, '_wp_page_template', esc_attr($_POST['_wp_page_template']));
+        });
+    }
+
+    /**
      * Allow wp_insert_post with empty title and content
      * Useful for custom post types that don't require these fields
      */
