@@ -5,12 +5,65 @@
     window.mp_crud_related = function(instance)
     {
         this.instance = instance;
-        this.list = '#' + instance.prefix + '_' + this.getRelatedId() + '_list';
+        this.list = '#crud_' + this.getRelatedId() + '_list';
     };
 
     window.mp_crud_related.prototype.getRelatedId = function()
     {
         return $.isArray(this.instance.related) ? this.instance.related.join('_') : this.instance.related;
+    }
+
+    window.mp_crud_related.prototype.initSortables = function()
+    {
+        var that = this,
+            related_data = this.instance,
+            table = $(this.list + ' table tbody');
+
+        table.find('tr').each(function()
+        {
+            var id = $(this).find('td:first').text();
+            $(this).attr('id', 'order_' + id);
+        });
+
+        table.sortable({
+            items: "tr",
+            cursor: 'move',
+            opacity: 0.6,
+            axis: 'y',
+            handle: '.sortable_handle',
+            cancel: '',
+            helper: function(e, ui)
+            {
+                ui.children().each(function()
+                {
+                    $(this).width($(this).width());
+                });
+                return ui;
+            },
+            update: function()
+            {
+                var order = table.sortable("serialize");
+                var data = {
+                    action: related_data.prefix + '_reorder_' + related_data.post + '_' + that.getRelatedId(),
+                    nonce: related_data.nonce,
+                    post_id: related_data.post_id,
+                    order: order
+                };
+
+                $.post( ajaxurl, data )
+                    .success(function(response)
+                    {
+                        if (response == -1)
+                            return alert('An error occurred while saving the data');
+
+                        if (typeof response.success !== 'undefined')
+                        {
+                            if (response.success !== true)
+                                return alert(response.data);
+                        }
+                    });
+            }
+        });
     }
 
     window.mp_crud_related.prototype.addPostRelated = function(related)
@@ -112,6 +165,8 @@
                         return alert(response.data);
 
                     $(that.list).html(typeof response.data !== 'undefined' ? response.data : '');
+
+                    that.initSortables();
                 }
             });
     };
@@ -133,6 +188,7 @@
 
             window.crud_instances[instance].wp_remove_post_related(id, type);
         });
+
     });
 
 })(jQuery);

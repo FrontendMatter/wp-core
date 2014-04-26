@@ -349,7 +349,7 @@ class FormBuilder
         else $posts = $post_type;
 
         foreach($posts as $post) $posts_values[$post->ID] = $post->post_title;
-        $posts_values = [$default_label] + $posts_values;
+        if ($default_label) $posts_values = [$default_label] + $posts_values;
 
         return $posts_values;
     }

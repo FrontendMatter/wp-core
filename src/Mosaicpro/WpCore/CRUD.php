@@ -31,12 +31,6 @@ class CRUD
     protected $related;
 
     /**
-     * Holds the Related prefix
-     * @var
-     */
-    protected $related_prefix;
-
-    /**
      * Holds the fields used for composing the Related List table columns
      * @var
      */
@@ -58,7 +52,7 @@ class CRUD
      * Holds the post related list actions / buttons
      * @var array
      */
-    protected $post_related_list_actions = ['default' => ['edit_related_thickbox', 'remove_from_post']];
+    protected $post_related_list_actions = ['default' => ['sortable', 'edit_related_thickbox', 'remove_from_post']];
 
     /**
      * Holds the edit form buttons
@@ -123,16 +117,6 @@ class CRUD
     }
 
     /**
-     * @param $related
-     * @param $prefix
-     * @return $this
-     */
-    private function setRelatedPrefix($related, $prefix)
-    {
-        return $this->setComponents('related_prefix', $related, $prefix);
-    }
-
-    /**
      * Create a new CRUD instance
      * @param $prefix
      * @param $post
@@ -142,11 +126,21 @@ class CRUD
     {
         $this->post = $post;
         $this->prefix = $prefix;
-        $this->mixed = is_array($related);
+        $this->mixed = is_array($related) && count($related) > 1;
 
         $this->setRelated($related);
         $this->setInstanceID();
         return $this;
+    }
+
+    /**
+     * i18n
+     * @param $content
+     * @return string|void
+     */
+    private function __($content)
+    {
+        return __($content, $this->prefix);
     }
 
     /**
@@ -168,26 +162,35 @@ class CRUD
             foreach ($related as $related_item)
             {
                 if (is_array($related_item))
-                    $this->setRelatedDefaults($related_item[1], $related_item[0], true);
+                {
+                    foreach($related_item as $related_item_name)
+                        $this->setRelatedDefaults($related_item_name, true);
+                }
                 else
-                    $this->setRelatedDefaults($related_item, $this->prefix, true);
+                    $this->setRelatedDefaults($related_item, true);
             }
         }
         else
-            $this->setRelatedDefaults($related, $this->prefix);
+        {
+            if (is_array($related))
+            {
+                foreach($related as $related_name)
+                    $this->setRelatedDefaults($related_name);
+            }
+            else
+                $this->setRelatedDefaults($related);
+        }
     }
 
     /**
      * @param $related
-     * @param $prefix
      * @param bool $array
      */
-    private function setRelatedDefaults($related, $prefix, $array = false)
+    private function setRelatedDefaults($related, $array = false)
     {
-        $this->setRelatedPrefix($related, $prefix);
-        $this->setListFields($prefix . '_' . $related, $this->list_fields['default']);
-        $this->setListActions($prefix . '_' . $related, $this->list_actions['default']);
-        $this->setPostRelatedListActions($prefix . '_' . $related, $this->post_related_list_actions['default']);
+        $this->setListFields($related, $this->list_fields['default']);
+        $this->setListActions($related, $this->list_actions['default']);
+        $this->setPostRelatedListActions($related, $this->post_related_list_actions['default']);
 
         if ($array) $this->related[] = $related;
         else $this->related = $related;
@@ -199,19 +202,8 @@ class CRUD
      */
     private function getRelatedPostTypes()
     {
-        $types = $this->getRelatedType();
+        $types = $this->getRelated();
         if (!is_array($types)) $types = [$types];
-        return $types;
-    }
-
-    /**
-     * Get an array of all post types
-     * @return array
-     */
-    private function getPostTypes()
-    {
-        $types = $this->getRelatedPostTypes();
-        array_unshift($types, $this->prefix . '_' . $this->post);
         return $types;
     }
 
@@ -478,38 +470,6 @@ class CRUD
     }
 
     /**
-     * Return the Related post type with or without the Related prefix
-     * @param null $related
-     * @return string
-     */
-    private function getRelatedType($related = null)
-    {
-        if (is_null($related)) $related = $this->getRelated();
-        if ($this->mixed)
-        {
-            if (!is_array($related)) $related = [$related];
-
-            $related_type_list = [];
-            foreach ($related as $related_item)
-            {
-                $related_prefix = '';
-                if (!empty($this->related_prefix[$related_item])) $related_prefix = $this->related_prefix[$related_item] . '_';
-                $related_type = $related_prefix . $related_item;
-                $related_type_list[] = $related_type;
-            }
-            return $related_type_list;
-        }
-        else
-        {
-            $related_prefix = '';
-            if (!empty($this->related_prefix[$related])) $related_prefix = $this->related_prefix[$related] . '_';
-            $related_type = $related_prefix . $related;
-        }
-
-        return $related_type;
-    }
-
-    /**
      * Apply filter for post type name label
      * @param $related_item
      * @return mixed|void
@@ -559,6 +519,7 @@ class CRUD
         $this->handle_ajax_list_post_related();
         $this->handle_ajax_add_post_related();
         $this->handle_ajax_remove_post_related();
+        $this->handle_ajax_reorder_post_related();
         return $this;
     }
 
@@ -571,7 +532,8 @@ class CRUD
         {
             global $post_type;
             global $post;
-            if (($hook === 'post.php' || $hook === 'post-new.php') && $post_type === $this->prefix . '_' . $this->post)
+
+            if (($hook === 'post.php' || $hook === 'post-new.php') && $post_type === $this->post)
             {
                 $script_id = 'crud_related';
                 wp_enqueue_script($script_id, plugin_dir_url(__FILE__) . 'js/crud/related.js', ['jquery'], '1.0', true);
@@ -633,13 +595,21 @@ class CRUD
         $related_list = $this->getRelatedPostTypes();
         foreach($related_list as $related_item)
         {
-            add_action('wp_ajax_' . $this->prefix . '_delete_' . $related_item, function($related_item) use ($related_item)
+            add_action('wp_ajax_' . $this->prefix . '_delete_' . $related_item, function() use ($related_item)
             {
                 $related_id = !empty($_REQUEST['related_id']) ? $_REQUEST['related_id'] : false;
-                if (!$related_id) wp_send_json_error( 'Invalid Request' );
-                $trashed = wp_delete_post($related_id);
-                if (!is_a($trashed, 'stdClass')) wp_send_json_error( 'The post was NOT trashed due to an error!' );
-                wp_send_json_success( 'The post was successfully moved to trash!' );
+                if (!$related_id) wp_send_json_error( $this->__('Invalid Request') );
+
+                $related_data = get_post($related_id);
+                if (!$related_data) wp_send_json_error( $this->__('Invalid Post') );
+
+                if ($related_data->post_type == 'attachment')
+                    $trashed = wp_delete_attachment($related_id);
+                else
+                    $trashed = wp_delete_post($related_id);
+
+                if (false === $trashed) wp_send_json_error( $this->__('The post was NOT trashed due to an error!') );
+                wp_send_json_success( $this->__('The post was successfully moved to trash!') );
             });
         }
     }
@@ -751,11 +721,25 @@ class CRUD
 
             if (empty($list)) return wp_send_json_success();
 
-            $related_posts = get_posts([
+            $related_posts_args = [
                 'post_type' => $related_types,
                 'numberposts' => -1,
                 'post__in' => $list
-            ]);
+            ];
+
+            if (in_array('attachment', $related_types))
+            {
+                $related_posts_args = array_merge($related_posts_args, [
+                    'post_status' => get_post_stati(),
+                    'numberposts' => null
+                ]);
+            }
+
+            $related_posts = get_posts($related_posts_args);
+            if (count($related_posts) == 0) wp_send_json_success();
+
+            $order = get_post_meta($post_id, '_order_' . $this->getRelatedId(), true);
+            $related_posts = self::order_sortables($related_posts, $order);
 
             $list_format = $this->get_list_format($this->list_post_related_format, $related_posts, 'post_related_');
             wp_send_json_success( $list_format );
@@ -949,6 +933,12 @@ class CRUD
                         'data-related-instance' => $this->getInstanceID()
                     ]);
             }
+            if ($action == 'sortable')
+            {
+                $actions[] = Button::regular('<i class="glyphicon glyphicon-move"></i>')
+                    ->addClass('sortable_handle')
+                    ->isButton();
+            }
             if (is_callable($action))
                 $actions[] = $action($related_post);
         }
@@ -999,6 +989,23 @@ class CRUD
         }
     }
 
+    private function handle_ajax_reorder_post_related()
+    {
+        add_action('wp_ajax_' . $this->prefix . '_reorder_' . $this->post . '_' . $this->getRelatedId(), function()
+        {
+            check_ajax_referer( $this->prefix . '_' . $this->post . '_nonce', 'nonce' );
+            if ( false ) wp_send_json_error( 'Security error' );
+
+            $post_id = $_POST['post_id'];
+            $order = $_POST['order'];
+
+            $order_params = array();
+            parse_str($order, $order_params);
+
+            update_post_meta($post_id, '_order_' . $this->getRelatedId(), $order_params['order']);
+        });
+    }
+
     /**
      * Create a new static CRUD instance
      * @param $prefix
@@ -1032,5 +1039,39 @@ class CRUD
 
         $posts = get_posts( $args );
         return $posts;
+    }
+
+    public static function order_sortables($posts, $order = null)
+    {
+        if (!empty($order))
+        {
+            usort($posts, function($a, $b) use ($order)
+            {
+                foreach($order as $value)
+                {
+                    if ($a->ID == $value)
+                    {
+                        return 0;
+                        break;
+                    }
+                    if ($b->ID == $value)
+                    {
+                        return 1;
+                        break;
+                    }
+                }
+            });
+        }
+        return $posts;
+    }
+
+    /**
+     * Get the container html markup for listing related posts
+     * @param array $post_types
+     * @return string
+     */
+    public static function getListContainer(array $post_types)
+    {
+        return '<div id="crud_' . implode('_', $post_types) . '_list"></div>';
     }
 } 

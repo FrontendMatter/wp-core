@@ -26,6 +26,23 @@ class Plugin extends PluginGeneric
     {
         // Add a filter to template_include in order to determine if the page has a template assigned within the plugin and return it's path
         add_filter('template_include', array( $this, 'viewPageTemplate') );
+
+        // Include partials from the plugin if the partial doesn't already exist in the theme
+        add_action('get_template_part_' . $this->getPrefix(), function($slug, $name)
+        {
+            $template_file = $name . '.php';
+
+            // template file path in the current theme
+            $file_theme = $this->getThemeDirectory() . $slug . '/templates/partials/' . $template_file;
+
+            if (file_exists($file_theme)) require $file_theme;
+
+            // template file path in the plugin
+            $file_plugin = plugin_dir_path( $this->getPluginFile() ) . 'templates/partials/' . $template_file;
+
+            if (file_exists($file_plugin)) require $file_plugin;
+
+        }, 10, 2);
     }
 
     /**
@@ -38,12 +55,15 @@ class Plugin extends PluginGeneric
     {
         global $post;
 
+        if (!is_single()) return $template;
+
         $template_file = get_post_meta( $post->ID, '_wp_page_template', true );
         $templates = $this->getPageTemplates();
 
         if ( ! isset( $templates[ $template_file ] ) )
         {
             $template_file = 'single-' . $post->post_type . '.php';
+
             // load the template file only if it was defined by our plugin
             // if ( ! isset( $templates[ $template_file ] ) ) return $template;
         }

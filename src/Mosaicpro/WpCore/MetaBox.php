@@ -117,7 +117,7 @@ class MetaBox
                 function($post) {
                     $this->display($post);
                 },
-                $this->prefix . '_' . $this->post_type,
+                $this->post_type,
                 $this->context,
                 $this->priority
             );

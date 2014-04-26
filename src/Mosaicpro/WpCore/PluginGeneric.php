@@ -75,11 +75,12 @@ class PluginGeneric
 
     /**
      * Get the Plugin prefix
+     * @param null $post_type Optional post type short name to prefix
      * @return mixed
      */
-    public function getPrefix()
+    public function getPrefix($post_type = null)
     {
-        return $this->prefix;
+        return is_null($post_type) ? $this->prefix : $this->prefix . '_' . $post_type;
     }
 
     /**
