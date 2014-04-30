@@ -1,4 +1,5 @@
 <?php namespace Mosaicpro\WpCore;
+use WP_Post;
 
 /**
  * Class PostData
@@ -92,5 +93,33 @@ class PostData
         if ( ' ' == $data['post_title'] ) $data['post_title'] = '';
         if ( ' ' == $data['post_content'] ) $data['post_content'] = '';
         return $data;
+    }
+
+    /**
+     * Get a default WP_Post object
+     * @param $post_type
+     * @return stdClass|WP_Post
+     */
+    public static function get_default($post_type)
+    {
+        $post = new \stdClass;
+        $post->ID = 0;
+        $post->post_author = get_current_user_id();
+        $post->post_date = '';
+        $post->post_date_gmt = '';
+        $post->post_password = '';
+        $post->post_type = $post_type;
+        $post->post_status = 'draft';
+        $post->to_ping = '';
+        $post->pinged = '';
+        $post->comment_status = get_option( 'default_comment_status' );
+        $post->ping_status = get_option( 'default_ping_status' );
+        $post->post_pingback = get_option( 'default_pingback_flag' );
+        $post->post_category = get_option( 'default_category' );
+        $post->page_template = 'default';
+        $post->post_parent = 0;
+        $post->menu_order = 0;
+        $post = new WP_Post( $post );
+        return $post;
     }
 } 

@@ -34,7 +34,7 @@ class PostList
      */
     private function add_columns($post_type, $add_columns = [])
     {
-        add_filter('manage_' . $post_type . '_posts_columns', function($columns, $add_columns) use ($add_columns)
+        add_filter('manage_' . $post_type . '_posts_columns', function($columns) use ($add_columns)
         {
             foreach($add_columns as $add)
             {
@@ -53,6 +53,23 @@ class PostList
             if ($column == 'thumbnail') echo self::post_thumbnail_edit_link($post_id);
             else echo get_post_meta($post_id, $column, true);
         }, 10, 2);
+    }
+
+    /**
+     * Remove Columns from WP Admin post listings
+     * @param $post_type
+     * @param array $remove_columns
+     */
+    private function remove_columns($post_type, $remove_columns = [])
+    {
+        add_filter('manage_' . $post_type . '_posts_columns', function($columns) use ($remove_columns)
+        {
+            foreach($remove_columns as $remove)
+            {
+                unset($columns[$remove]);
+            }
+            return $columns;
+        });
     }
 
     /**

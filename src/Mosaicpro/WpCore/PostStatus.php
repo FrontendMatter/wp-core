@@ -99,7 +99,7 @@ class PostStatus
             'label_count' => $this->label_count,
             'show_in_admin_status_list' => true,
             'show_in_admin_all_list' => true,
-            'public' => false,
+            'public' => true,
             'exclude_from_search' => false
         ]);
 
@@ -204,6 +204,8 @@ class PostStatus
     private function getDropdown()
     {
         global $wp_post_statuses, $post;
+
+        if (!isset($post->post_status)) return false;
 
         // Get all non-builtin post status and add them as <option>
         $options = $display = '';

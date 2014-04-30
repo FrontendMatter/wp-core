@@ -209,7 +209,7 @@ class MetaBox
             $value = get_post_meta($post->ID, $name, true);
             $label = isset($field['label']) ? $field['label'] : ucwords(str_replace("_", " ", $name));
             $values = isset($field['values']) ? (is_array($field['values']) ? $field['values'] : FormBuilder::select_values($field['values'])) : [];
-            if (starts_with($field['type'], 'select')) $values = [' -- ' . $label . ' -- '] + $values;
+            if (in_array($field['type'], ['select', 'select_multiple'])) $values = [' -- ' . $label . ' -- '] + $values;
 
             if (is_callable($field['type']))
                 return $field['type']($field['name'], $label, $value, $values);
@@ -229,6 +229,7 @@ class MetaBox
                 case 'select_multiple':
                 case 'checkbox_multiple':
                 case 'radio':
+                case 'select_range':
                     FormBuilder::$field['type']($field['name'], $label, $value, $values);
                     break;
             }

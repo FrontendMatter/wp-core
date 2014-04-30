@@ -311,18 +311,47 @@ class FormBuilder
         $output[] = '<div class="form-group"><label for="' . $name . '">' . $label . ':</label><br/>';
 
         foreach ($select as $select_name => $range)
-        {
-            $range = range($range[0], $range[1]);
-            $values = [];
-            foreach($range as $r)
-            {
-                $fr = sprintf("%02d", $r);
-                $values[$fr] = $fr;
-            }
-            $output[] = self::$form->select($name . "[" . $select_name . "]", $values, $value[$select_name]) . PHP_EOL;
-        }
+            $output[] = $this->get_select_range($name . "[" . $select_name . "]", null, $value[$select_name], $range, "%02d") . PHP_EOL;
 
         $output[] = '</div>';
+        return implode(PHP_EOL, $output);
+    }
+
+    /**
+     * Echo out a select range
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param $range
+     * @param null $format
+     */
+    private function select_range($name, $label, $value, $range, $format = null)
+    {
+        echo $this->get_select_range($name, $label, $value, $range, $format);
+    }
+
+    /**
+     * Create a select dropdown from a range
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param $range
+     * @param null $format
+     * @return string
+     */
+    public function get_select_range($name, $label, $value, $range, $format = null)
+    {
+        $output = [];
+        if (!is_null($label)) $output[] = '<div class="form-group"><label for="' . $name . '">' . $label . ':</label><br/>';
+        $range = range($range[0], $range[1]);
+        $values = [];
+        foreach($range as $r)
+        {
+            $fr = is_null($format) ? $r : sprintf($format, $r);
+            $values[$fr] = $fr;
+        }
+        $output[] = self::$form->select($name, $values, $value) . PHP_EOL;
+        if (!is_null($label)) $output[] = '</div>';
         return implode(PHP_EOL, $output);
     }
 

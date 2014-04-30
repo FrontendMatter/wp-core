@@ -25,6 +25,12 @@ class PostType
     protected $args = [];
 
     /**
+     * Holds whether the plugin is being activated right now
+     * @var bool
+     */
+    protected $plugin_activating = false;
+
+    /**
      * Creates a new PostType instance
      * @param $name
      * @param $prefix
@@ -33,6 +39,7 @@ class PostType
     {
         $this->setName($name);
         $this->prefix = $prefix;
+        $this->plugin_activating = defined('MP_PLUGIN_ACTIVATING');
         return $this;
     }
 
@@ -99,6 +106,7 @@ class PostType
                 'slug' => $slug_multiple
             ),
             'public' => true,
+            'show_ui' => true,
             'supports' => array(
                 'title',
                 'thumbnail',
@@ -107,11 +115,20 @@ class PostType
         );
         $args = array_merge($args_default, $this->args);
 
-        add_action('init', function() use ($slug_single, $args)
+        if ($this->plugin_activating)
         {
             $post_type = !empty($this->prefix) ? $this->prefix . '_' . $slug_single : $slug_single;
             if (post_type_exists($post_type)) return false;
             register_post_type($post_type, $args);
-        });
+        }
+        else
+        {
+            add_action('init', function() use ($slug_single, $args)
+            {
+                $post_type = !empty($this->prefix) ? $this->prefix . '_' . $slug_single : $slug_single;
+                if (post_type_exists($post_type)) return false;
+                register_post_type($post_type, $args);
+            });
+        }
     }
 }
