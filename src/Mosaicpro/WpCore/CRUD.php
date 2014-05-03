@@ -453,7 +453,24 @@ class CRUD
      */
     public function getFormField_post_title($post)
     {
+        if (is_null($post)) {
+            $post = new \stdClass();
+            $post->post_title = '';
+        }
         FormBuilder::input('post_title', 'Title', esc_attr($post->post_title));
+    }
+
+    /**
+     * Predefined post_status Form Field
+     * @param $post
+     */
+    public function getFormField_post_status($post)
+    {
+        if (is_null($post)) {
+            $post = new \stdClass();
+            $post->post_status = 'draft';
+        }
+        FormBuilder::select('post_status', 'Status', esc_attr($post->post_status), get_post_stati());
     }
 
     /**
@@ -637,8 +654,8 @@ class CRUD
 
                     $related_save = [];
                     if (!$related_id) $related_save = (array) @get_default_post_to_edit($related_item, true);
-                    $related_save = array_merge($related_save, $_POST);
                     $related_save['post_status'] = 'publish';
+                    $related_save = array_merge($related_save, $_POST);
 
                     unset($related_save['nonce']);
                     unset($related_save['action']);
@@ -687,6 +704,7 @@ class CRUD
                         <?php
                         do_action('crud_' . $this->prefix . '_edit_' . $this->post . '_' . $related_item . '_form_fields', $related);
                         do_action('crud_' . $this->prefix . '_edit_' . $this->post . '_' . $related_item . '_form', $related, $this);
+                        echo "<hr/>";
                         do_action('crud_' . $this->prefix . '_edit_' . $this->post . '_' . $related_item . '_form_buttons', $related);
                         ?>
                     </div>
@@ -726,6 +744,7 @@ class CRUD
                 'numberposts' => -1,
                 'post__in' => $list
             ];
+            $related_posts_args = array_merge($related_posts_args, $this->list_query);
 
             if (in_array('attachment', $related_types))
             {

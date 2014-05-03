@@ -1,5 +1,8 @@
 <?php namespace Mosaicpro\WpCore;
 
+use Mosaicpro\Button\Button;
+use Mosaicpro\Core\IoC;
+
 /**
  * Class Utility
  * @package Mosaicpro\WpCore
@@ -58,6 +61,45 @@ class Utility
             'utility_show_hide_instance_' . self::str_random(),
             $localize_data
         );
+    }
+
+    /**
+     * Get the media upload button markup
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param string $button_text
+     * @return string
+     */
+    public static function get_media_upload_button($name, $label, $value, $button_text = 'Upload')
+    {
+        self::enqueue_media_upload_button();
+        $form = IoC::getContainer('form');
+
+        $output = [];
+        $output[] = '<span class="mp-media-upload-button">' .
+            '<label for="' . $name . '">' . $label . ':</label>' .
+            '<div class="input-group">' .
+                $form->input('text', $name, $value, ['class' => 'regular-text text-upload form-control', 'placeholder' => 'Media URL']) .
+                '<span class="input-group-btn">' .
+                    Button::primary($button_text)->addClass('button-upload') .
+                '</span>' .
+            '</div><br/>' .
+            '<img style="max-width: 300px; display: block;" src="' . $value . '" class="preview-upload" />' .
+        '</span>';
+
+        return implode(PHP_EOL, $output);
+    }
+
+    /**
+     * Enqueue the media upload button styles & scripts
+     */
+    public static function enqueue_media_upload_button()
+    {
+        wp_enqueue_style('thickbox' );
+        wp_enqueue_script('thickbox');
+        wp_enqueue_script('media-upload');
+        wp_enqueue_script('mp-media-upload-button', plugin_dir_url(__FILE__) . 'js/utility/upload/media-upload-button.js', ['jquery', 'thickbox', 'media-upload'], '1.0', true);
     }
 
     /**

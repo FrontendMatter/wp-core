@@ -102,11 +102,14 @@ class PostType
                 'not_found_in_trash' => 'No ' . $label_multiple . ' Found in Trash'
             ),
             'query_var' => $slug_multiple,
+            'has_archive' => true,
             'rewrite' => array(
                 'slug' => $slug_multiple
             ),
             'public' => true,
             'show_ui' => true,
+            'show_in_nav_menus' => true,
+            'publicly_queryable' => true,
             'supports' => array(
                 'title',
                 'thumbnail',

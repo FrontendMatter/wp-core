@@ -43,6 +43,9 @@ class Plugin extends PluginGeneric
             if (file_exists($file_plugin)) require $file_plugin;
 
         }, 10, 2);
+
+        // add theme customizer support for page/post templates
+        PostCustomizer::getInstance()->initPageTemplates($this->getPrefix());
     }
 
     /**
@@ -55,14 +58,26 @@ class Plugin extends PluginGeneric
     {
         global $post;
 
-        if (!is_single()) return $template;
+        if ((!is_single() && !is_archive()) || is_null($post)) return $template;
 
         $template_file = get_post_meta( $post->ID, '_wp_page_template', true );
         $templates = $this->getPageTemplates();
 
+        $wp_customize = !empty($_POST['wp_customize']) && $_POST['wp_customize'] == 'on';
+        $customized = isset($_POST['customized']) ? $_POST['customized'] : false;
+        if ($wp_customize && $customized)
+        {
+            $customized = json_decode(wp_unslash($customized), true);
+            $template_file = isset($customized['_wp_page_template']) ? $customized['_wp_page_template'] : 'default';
+        }
+
         if ( ! isset( $templates[ $template_file ] ) )
         {
-            $template_file = 'single-' . $post->post_type . '.php';
+            if (is_single())
+                $template_file = 'single-' . $post->post_type . '.php';
+
+            if (is_archive())
+                $template_file = 'archive-' . $post->post_type . '.php';
 
             // load the template file only if it was defined by our plugin
             // if ( ! isset( $templates[ $template_file ] ) ) return $template;
@@ -127,6 +142,26 @@ class Plugin extends PluginGeneric
         // with the existing templates array from the cache.
         $templates = array_merge( $templates_cache, $templates );
 
+        // get the current post type
+        $post_type = get_post_type();
+
+        // are we using the theme customizer
+        $customizer = defined('IFRAME_REQUEST');
+        if ($customizer)
+        {
+            $post = PostCustomizer::getInstance()->getPost();
+            if ($post) $post_type = get_post_type($post->ID);
+        }
+
+        // filter the templates by post type
+        if (!empty($post_type))
+        {
+            $templates = array_flip(array_filter(array_flip($templates), function($key) use ($post_type)
+            {
+                return stristr($key, $post_type) !== false;
+            }));
+        }
+
         // Add the modified cache to allow WordPress to pick it up for listing
         // available templates
         wp_cache_add( $cache_key, $templates, 'themes', 1800 );
@@ -167,7 +202,7 @@ class Plugin extends PluginGeneric
 
         // add a save_post action in order to save the selected page template from the
         // custom post type edit screen in WP Admin
-        PostData::save_page_template($this->prefix . '_' . $post_type);
+        PostData::save_page_template($post_type);
 
         // create the page template metabox
         MetaBox::make($this->prefix, 'page_template', $this->__('Page Template'))

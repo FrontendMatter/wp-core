@@ -109,6 +109,69 @@ class FormBuilder
     }
 
     /**
+     * Echo out a group of radio buttons
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param $values
+     * @param array $attributes
+     */
+    private function radio_buttons($name, $label, $value, $values, array $attributes = [])
+    {
+        echo $this->get_radio_buttons($name, $label, $value, $values, $attributes);
+    }
+
+    /**
+     * Get a group of radio buttons
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param $values
+     * @param array $attributes
+     * @return string
+     */
+    public function get_radio_buttons($name, $label, $value, $values, array $attributes = [])
+    {
+        $output = [];
+        $output[] = '<p><strong>' . $label . '</strong></p>';
+        $output[] = '<div class="btn-group" data-toggle="buttons">';
+        foreach($values as $value_id => $value_label) {
+            $checked = (string) $value_id == (string) $value;
+            $output[] = $this->get_radio_single_button($name, $value_label, $value_id, $checked, $attributes);
+        }
+        $output[] = '</div>';
+        return implode(PHP_EOL, $output);
+    }
+
+    /**
+     * Get a single radio button
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param null $checked
+     * @param array $attributes
+     * @return string
+     */
+    public function get_radio_single_button($name, $label, $value, $checked = null, array $attributes = [])
+    {
+        $output = [];
+
+        if ($checked) $checked = ['checked'];
+        if (is_null($checked)) $checked = $value ? ['checked'] : [];
+        if (!$checked) $checked = [];
+
+        $active = !empty($checked);
+        $output[] = '<label class="btn btn-default' . ($active ? ' active' : '') . '">';
+
+        $attributes = array_merge($checked, $attributes);
+        $output[] = self::$form->radio($name, $value, null, $attributes) . $label;
+
+        $output[] = '</label>';
+
+        return implode(PHP_EOL, $output);
+    }
+
+    /**
      * Echo out a checkbox input field
      * @param $name
      * @param $label
@@ -201,7 +264,7 @@ class FormBuilder
     {
         $output = [];
         $attributes = array_merge(['class' => 'form-control'], $attributes);
-        $output[] = '<div class="form-group"><label for="' . $name . '">' . $label . ':</label>';
+        $output[] = '<div class="form-group"><label for="' . $name . '">' . $label . ':</label><br/>';
         $output[] = self::$form->select($name, $values, $value, $attributes);
         $output[] = '</div>';
         return implode(PHP_EOL, $output);
@@ -237,10 +300,11 @@ class FormBuilder
      * @param $name
      * @param $label
      * @param $value
+     * @param array $attributes
      */
-    private function textarea($name, $label, $value)
+    private function textarea($name, $label, $value, array $attributes = [])
     {
-        echo $this->get_textarea($name, $label, $value);
+        echo $this->get_textarea($name, $label, $value, $attributes);
     }
 
     /**
@@ -248,13 +312,15 @@ class FormBuilder
      * @param $name
      * @param $label
      * @param $value
+     * @param array $attributes
      * @return string
      */
-    public function get_textarea($name, $label, $value)
+    public function get_textarea($name, $label, $value, array $attributes = [])
     {
+        $attributes = array_merge(['class' => 'form-control'], $attributes);
         $output = [];
         $output[] = '<div class="form-group"><label for="' . $name . '">' . $label . ':</label>';
-        $output[] = self::$form->textarea($name, $value, ['class' => 'form-control']);
+        $output[] = self::$form->textarea($name, $value, $attributes);
         $output[] = '</div>';
         return implode(PHP_EOL, $output);
     }
@@ -349,6 +415,7 @@ class FormBuilder
         {
             $fr = is_null($format) ? $r : sprintf($format, $r);
             $values[$fr] = $fr;
+            if ($r == 0) $values[$fr] = '-- None --';
         }
         $output[] = self::$form->select($name, $values, $value) . PHP_EOL;
         if (!is_null($label)) $output[] = '</div>';
