@@ -503,6 +503,9 @@ class CRUD
      */
     public static function setPostTypeLabel($post_type, $label)
     {
+        if (has_filter('crud_post_type_label_' . $post_type))
+            remove_all_filters('crud_post_type_label_' . $post_type);
+
         add_filter('crud_post_type_label_' . $post_type, function() use ($label)
         {
             return $label;
@@ -906,6 +909,8 @@ class CRUD
         foreach($this->{$list_key}[$related_post->post_type] as $action)
         {
             $related_label = self::getPostTypeLabel($related_post->post_type);
+            $post_label = self::getPostTypeLabel($this->post);
+
             if ($action == 'edit_related_thickbox')
             {
                 $actions[] = Button::regular('<i class="glyphicon glyphicon-pencil"></i>')
@@ -927,14 +932,14 @@ class CRUD
                         'data-related-id' => $related_post->ID,
                         'data-related-type' => $related_post->post_type,
                         'data-related-instance' => $this->getInstanceID(),
-                        'title' => 'Add ' . $related_label . ' to ' . $this->post
+                        'title' => 'Add ' . $related_label . ' to ' . $post_label
                     ]);
             }
             if ($action == 'remove_related')
             {
                 $actions[] = Button::danger('<i class="glyphicon glyphicon-trash"></i>')
                     ->addAttributes([
-                        'title' => 'Move ' . $related_label . ' to Trash AND remove ' . $related_label . ' from ' . $this->post,
+                        'title' => 'Move ' . $related_label . ' to Trash AND remove ' . $related_label . ' from ' . $post_label,
                         'data-toggle' => 'remove-related',
                         'data-related-id' => $related_post->ID,
                         'data-related-type' => $related_post->post_type,
@@ -945,7 +950,7 @@ class CRUD
             {
                 $actions[] = Button::danger('<i class="glyphicon glyphicon-minus"></i>')
                     ->addAttributes([
-                        'title' => 'Remove ' . $related_label . ' from ' . $this->post,
+                        'title' => 'Remove ' . $related_label . ' from ' . $post_label,
                         'data-toggle' => 'remove-from-post',
                         'data-related-id' => $related_post->ID,
                         'data-related-type' => $related_post->post_type,

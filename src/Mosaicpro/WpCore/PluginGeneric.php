@@ -164,7 +164,7 @@ class PluginGeneric
      */
     public function setPageTemplates(array $templates)
     {
-        $this->page_templates = $templates;
+        $this->page_templates = array_merge($this->getPageTemplates(), $templates);
     }
 
     /**
