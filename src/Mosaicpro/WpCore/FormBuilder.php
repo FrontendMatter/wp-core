@@ -122,6 +122,42 @@ class FormBuilder
     }
 
     /**
+     * Echo out a group of checkbox buttons
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param $values
+     * @param array $attributes
+     */
+    private function checkbox_buttons($name, $label, $value, $values, array $attributes = [])
+    {
+        echo $this->get_checkbox_buttons($name, $label, $value, $values, $attributes);
+    }
+
+    /**
+     * Get a group of radio/checkbox buttons
+     * @param string $type
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param $values
+     * @param array $attributes
+     * @return string
+     */
+    public function get_type_buttons($type = 'radio', $name, $label, $value, $values, array $attributes = [])
+    {
+        $output = [];
+        if (!empty($label)) $output[] = '<p><strong>' . $label . '</strong></p>';
+        $output[] = '<div class="btn-group btn-group-sm" data-toggle="buttons">';
+        foreach($values as $value_id => $value_label) {
+            $checked = (string) $value_id == (string) $value;
+            $output[] = $this->{"get_$type" . "_single_button"}($name, $value_label, $value_id, $checked, $attributes);
+        }
+        $output[] = '</div>';
+        return implode(PHP_EOL, $output);
+    }
+
+    /**
      * Get a group of radio buttons
      * @param $name
      * @param $label
@@ -132,14 +168,49 @@ class FormBuilder
      */
     public function get_radio_buttons($name, $label, $value, $values, array $attributes = [])
     {
+        return $this->get_type_buttons('radio', $name, $label, $value, $values, $attributes);
+    }
+
+    /**
+     * Get a group of checkbox buttons
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param $values
+     * @param array $attributes
+     * @return string
+     */
+    public function get_checkbox_buttons($name, $label, $value, $values, array $attributes = [])
+    {
+        return $this->get_type_buttons('checkbox', $name, $label, $value, $values, $attributes);
+    }
+
+    /**
+     * Get a single radio/checkbox button
+     * @param string $type
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param null $checked
+     * @param array $attributes
+     * @return string
+     */
+    public function get_type_single_button($type = 'radio', $name, $label, $value, $checked = null, array $attributes = [])
+    {
         $output = [];
-        $output[] = '<p><strong>' . $label . '</strong></p>';
-        $output[] = '<div class="btn-group" data-toggle="buttons">';
-        foreach($values as $value_id => $value_label) {
-            $checked = (string) $value_id == (string) $value;
-            $output[] = $this->get_radio_single_button($name, $value_label, $value_id, $checked, $attributes);
-        }
-        $output[] = '</div>';
+
+        if ($checked) $checked = ['checked'];
+        if (is_null($checked)) $checked = $value ? ['checked'] : [];
+        if (!$checked) $checked = [];
+
+        $active = !empty($checked);
+        $output[] = '<label class="btn btn-default' . ($active ? ' active' : '') . '">';
+
+        $attributes = array_merge($checked, $attributes);
+        $output[] = self::$form->$type($name, $value, null, $attributes) . $label;
+
+        $output[] = '</label>';
+
         return implode(PHP_EOL, $output);
     }
 
@@ -154,21 +225,21 @@ class FormBuilder
      */
     public function get_radio_single_button($name, $label, $value, $checked = null, array $attributes = [])
     {
-        $output = [];
+        return $this->get_type_single_button('radio', $name, $label, $value, $checked, $attributes);
+    }
 
-        if ($checked) $checked = ['checked'];
-        if (is_null($checked)) $checked = $value ? ['checked'] : [];
-        if (!$checked) $checked = [];
-
-        $active = !empty($checked);
-        $output[] = '<label class="btn btn-default' . ($active ? ' active' : '') . '">';
-
-        $attributes = array_merge($checked, $attributes);
-        $output[] = self::$form->radio($name, $value, null, $attributes) . $label;
-
-        $output[] = '</label>';
-
-        return implode(PHP_EOL, $output);
+    /**
+     * Get a single checkbox button
+     * @param $name
+     * @param $label
+     * @param $value
+     * @param null $checked
+     * @param array $attributes
+     * @return string
+     */
+    public function get_checkbox_single_button($name, $label, $value, $checked = null, array $attributes = [])
+    {
+        return $this->get_type_single_button('checkbox', $name, $label, $value, $checked, $attributes);
     }
 
     /**

@@ -136,12 +136,15 @@ class ThickBox
         }
         else $this->url_data = '&inlineId=' . $this->id;
 
-        $output = '<a href="' . $this->url . '#' . $this->type . '?width=600&height=550' . $this->url_data . '"' . $this->getButtonAttributes() . '>' . $this->label . '</a>' . PHP_EOL;
+        if ($this->label === false)
+            $output = '';
+        else
+            $output = '<a href="' . $this->url . '#' . $this->type . '?width=600&height=550' . $this->url_data . '"' . $this->getButtonAttributes() . '>' . $this->label . '</a>' . PHP_EOL;
 
         if ($this->type === self::TB_TYPE_INLINE)
             $output .= '
             <div id="' . $this->id . '" style="display:none;">
-                <p>' . $this->content . '</p>
+                ' . $this->content . '
             </div>';
 
         return $output;
@@ -159,7 +162,7 @@ class ThickBox
         $return = [
             'id' => $id
         ];
-        if ($label) $return['label'] = $label;
+        if (isset($label)) $return['label'] = $label;
         if ($content) $return['content'] = $content;
         return $return;
     }
