@@ -48,7 +48,8 @@ class PostData
     {
         add_action('save_post', function($post_id) use ($post_type)
         {
-            if ( $post_type !== $_POST['post_type'] ) return;
+            if ( is_array($post_type) && !in_array($_POST['post_type'], $post_type) ) return;
+            if ( !is_array($post_type) && $post_type !== $_POST['post_type'] ) return;
 
             # Skip the auto saves
             if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;

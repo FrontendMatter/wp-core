@@ -61,28 +61,47 @@ class Plugin extends PluginGeneric
         if ((!is_single() && !is_archive()) || is_null($post)) return $template;
 
         $template_file = get_post_meta( $post->ID, '_wp_page_template', true );
-        $templates = $this->getPageTemplates();
 
         $wp_customize = !empty($_POST['wp_customize']) && $_POST['wp_customize'] == 'on';
         $customized = isset($_POST['customized']) ? $_POST['customized'] : false;
+
         if ($wp_customize && $customized)
         {
             $customized = json_decode(wp_unslash($customized), true);
             $template_file = isset($customized['_wp_page_template']) ? $customized['_wp_page_template'] : 'default';
         }
 
+        $templates = $this->getPageTemplates();
         if ( ! isset( $templates[ $template_file ] ) )
         {
-            if (is_single())
-                $template_file = 'single-' . $post->post_type . '.php';
-
-            if (is_archive())
-                $template_file = 'archive-' . $post->post_type . '.php';
-
             // load the template file only if it was defined by our plugin
             // if ( ! isset( $templates[ $template_file ] ) ) return $template;
         }
 
+        // try the post meta template or the template provided by the theme customizer
+        $template_file_path = $this->maybeGetTemplatePath($template_file);
+        if ($template_file_path) return $template_file_path;
+
+        if (is_single())
+        {
+            $template_file = 'single-' . $post->post_type . '.php';
+            $template_file_path = $this->maybeGetTemplatePath($template_file);
+            if ($template_file_path) return $template_file_path;
+        }
+
+        if (is_archive())
+        {
+            $template_file = 'archive-' . $post->post_type . '.php';
+            $template_file_path = $this->maybeGetTemplatePath($template_file);
+            if ($template_file_path) return $template_file_path;
+        }
+
+        // Return the default template
+        return $template;
+    }
+
+    private function maybeGetTemplatePath($template_file)
+    {
         // template file path in the current theme
         $file_theme = $this->getThemeDirectory() . $template_file;
 
@@ -95,8 +114,7 @@ class Plugin extends PluginGeneric
         // If the current theme doesn't have a template file, use the one provided by the plugin
         if ( file_exists( $file_plugin ) ) return $file_plugin;
 
-        // Return the default template
-        return $template;
+        return false;
     }
 
     /**
@@ -158,7 +176,7 @@ class Plugin extends PluginGeneric
         {
             $templates = array_flip(array_filter(array_flip($templates), function($key) use ($post_type)
             {
-                return stristr($key, $post_type) !== false;
+                return stristr($key, $post_type) || stristr($key, 'global') !== false;
             }));
         }
 
