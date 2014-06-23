@@ -1,7 +1,7 @@
 <?php namespace Mosaicpro\WpCore;
 
-use Mosaicpro\Button\Button;
-use Mosaicpro\Core\IoC;
+use Mosaicpro\HtmlGenerators\Button\Button;
+use Mosaicpro\HtmlGenerators\Core\IoC;
 
 /**
  * Class Utility

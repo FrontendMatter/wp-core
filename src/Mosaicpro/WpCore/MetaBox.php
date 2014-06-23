@@ -1,7 +1,5 @@
 <?php namespace Mosaicpro\WpCore;
 
-use Mosaicpro\Core\IoC;
-
 /**
  * Class MetaBox
  * @package Mosaicpro\WpCore

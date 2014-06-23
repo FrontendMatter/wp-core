@@ -1,6 +1,6 @@
 <?php namespace Mosaicpro\WpCore;
 
-use Mosaicpro\Core\IoC;
+use Mosaicpro\HtmlGenerators\Core\IoC;
 
 /**
  * Class FormBuilder

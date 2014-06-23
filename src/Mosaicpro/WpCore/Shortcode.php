@@ -24,7 +24,7 @@ abstract class Shortcode
     public static function getInstance()
     {
         $class = get_called_class();
-        if (is_null(self::$instance[$class]))
+        if (!isset(self::$instance[$class]) || (isset(self::$instance[$class]) && is_null(self::$instance[$class])))
         {
             self::$instance[$class] = new $class;
         }
