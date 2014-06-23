@@ -1,6 +1,7 @@
 {
     "name": "mosaicpro/wp-core",
-    "description": "",
+    "description": "WordPress Development KIT",
+    "version": "0.1.1",
     "authors": [
         {
             "name": "Laza Bogdan",
