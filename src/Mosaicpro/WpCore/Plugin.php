@@ -102,6 +102,9 @@ class Plugin extends PluginGeneric
 
     private function maybeGetTemplatePath($template_file)
     {
+        if (empty($template_file))
+            return false;
+
         // template file path in the current theme
         $file_theme = $this->getThemeDirectory() . $template_file;
 

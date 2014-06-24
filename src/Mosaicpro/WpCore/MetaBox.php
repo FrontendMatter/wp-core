@@ -107,7 +107,18 @@ class MetaBox
      */
     private function add()
     {
-        add_action('add_meta_boxes', function()
+        if (is_array($this->post_type))
+            foreach ($this->post_type as $pt)
+                $this->add_meta_box($pt);
+        else
+            $this->add_meta_box($this->post_type);
+
+        return $this;
+    }
+
+    private function add_meta_box($post_type)
+    {
+        add_action('add_meta_boxes', function() use ($post_type)
         {
             add_meta_box(
                 $this->prefix . '_' . $this->name,
@@ -115,12 +126,11 @@ class MetaBox
                 function($post) {
                     $this->display($post);
                 },
-                $this->post_type,
+                $post_type,
                 $this->context,
                 $this->priority
             );
         });
-        return $this;
     }
 
     /**
