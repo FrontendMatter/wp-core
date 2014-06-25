@@ -556,7 +556,7 @@ class CRUD
             if (($hook === 'post.php' || $hook === 'post-new.php') && $post_type === $this->post)
             {
                 $script_id = 'crud_related';
-                wp_enqueue_script($script_id, home_url() . '/vendor/mosaicpro/wp-core/src/Mosaicpro/WpCore/js/crud/related.js', ['jquery'], '1.0', true);
+                wp_enqueue_script($script_id, plugin_dir_url(__FILE__) . '/js/crud/related.js', ['jquery'], '1.0', true);
                 wp_localize_script(
                     $script_id,
                     $this->getInstanceID(),
@@ -585,7 +585,7 @@ class CRUD
             $action = 'wp_ajax_list_' . $this->post . '_' . $post_type;
             add_action($action, function() use ($post_type)
             {
-                wp_enqueue_script('ajax_list_' . $post_type, home_url() . '/vendor/mosaicpro/wp-core/src/Mosaicpro/WpCore/js/crud/ajax_list.js', ['jquery'], '1.0', true);
+                wp_enqueue_script('ajax_list_' . $post_type, plugin_dir_url(__FILE__) . '/js/crud/ajax_list.js', ['jquery'], '1.0', true);
                 ThickBox::getHeader();
 
                 $related_posts_query = [
@@ -685,7 +685,7 @@ class CRUD
 
                 $related = get_post($related_id);
 
-                wp_enqueue_script('ajax_edit_related', home_url() . '/vendor/mosaicpro/wp-core/src/Mosaicpro/WpCore/js/crud/ajax_edit_related.js', ['jquery'], '1.0', true);
+                wp_enqueue_script('ajax_edit_related', plugin_dir_url(__FILE__) . '/js/crud/ajax_edit_related.js', ['jquery'], '1.0', true);
                 wp_localize_script(
                     'ajax_edit_related',
                     'related_data',
